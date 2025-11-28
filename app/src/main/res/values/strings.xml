@@ -1,0 +1,62 @@
+<resources>
+    <string name="app_name" translatable="false">Material Bench</string>
+    <string name="title_activity_bench" translatable="false">BenchActivity</string>
+    <string name="overall_score_title">OVERALL SCORE</string>
+    <string name="top_percentile">Top %1$s among devices</string>
+    <string name="no_rank_data">No rank data available</string>
+    <string name="wait_rank_data">Waiting for rank data...</string>
+    <string name="run_benchmark">Run benchmark</string>
+    <string name="cpu_benchmark_title">CPU Benchmark</string>
+    <string name="cpu_benchmark_description">CPU performance test</string>
+    <string name="gpu_benchmark_title">GPU Benchmark</string>
+    <string name="gpu_benchmark_description">Graphics performance test</string>
+    <string name="memory_test_title">Memory Test</string>
+    <string name="memory_test_description">MEM test</string>
+    <string name="ai_test_title">AI Test</string>
+    <string name="ai_test_description">AI test</string>
+    <string name="points">points</string>
+    <string name="cpu_icon_text" translatable="false">CPU</string>
+    <string name="gpu_icon_text" translatable="false">GPU</string>
+    <string name="mem_icon_text" translatable="false">MEM</string>
+    <string name="ai_icon_text" translatable="false">AI</string>
+    <string name="material_bench_title" translatable="false">MaterialBench</string>
+    <string name="expand">Expand</string>
+    <string name="collapse">Collapse</string>
+    <string name="cpu_math_single">CPU — Math (Single core)</string>
+    <string name="cpu_math_multi">CPU — Math (Multi core)</string>
+    <string name="running">Running:</string>
+    <string name="overall_progress_title">Overall progress</string>
+    <string name="finished">Finished!</string>
+    <string name="back_to_menu">Back to Menu</string>
+    <string name="ram_seq_write">RAM — Sequential write</string>
+    <string name="ram_seq_read">RAM — Sequential read</string>
+    <string name="rom_rand_write">ROM — Random write</string>
+    <string name="rom_rand_read">ROM — Random read</string>
+    <string name="rom_seq_write">ROM — Sequential write</string>
+    <string name="rom_seq_read">ROM — Sequential read</string>
+    <string name="cpu_crypto_single">CPU — Crypto (Single core)</string>
+    <string name="cpu_crypto_multi">CPU — Crypto (Multi core)</string>
+    <string name="ai_litert">AI — LiteRT Gpu</string>
+    <string name="main_title">Main</string>
+    <string name="stress_title">Stress test</string>
+    <string name="vulkan_compute_unsupported">Vulkan Compute is not supported on your device</string>
+    <string name="select_stress_modes">Select stress test modes (minimum one):</string>
+    <string name="stress_start">Start test</string>
+    <string name="stress_started">Stress test started!</string>
+    <string name="stress_stopped">Stress test stopped!</string>
+    <string name="stress_running">Stress test started, stop to switch between tabs</string>
+    <string name="stress_stop">Stop test</string>
+    <string name="high_bat_temp_dialog_title">Warning: high temperature</string>
+    <string name="high_bat_temp_dialog_msg">The device temperature (%1$.1f°C) is too high. Continuing the stress test may cause overheating and potential damage to your device.</string>
+    <string name="ok" translatable="false">OK</string>
+    <string name="gpu_rt">GPU — Cubes</string>
+    <string name="device_not_supported">Device not supported</string>
+    <string name="device_incomplete_feature">Some required features are missing. Test score is incomplete.</string>
+    <string name="bench_version">Version: %1$s (%2$d)</string>
+    <string name="vulkan_compute_gemm" translatable="false">GPU — GEMM</string>
+    <string name="vulkan_compute_nbody" translatable="false">GPU — N-Body</string>
+    <string name="need_more_ram">You need more free RAM to run the test</string>
+    <string name="need_more_rom">You need more free ROM to run the test</string>
+    <string name="low_bat_temp_dialog_title">Warning: low temperature</string>
+    <string name="low_bat_temp_dialog_msg">The device temperature (%1$.1f°C) is too low. Continuing the stress test may cause malfunction or potential damage to your device.</string>
+</resources>

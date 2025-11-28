@@ -1,0 +1,57 @@
+#version 450
+
+layout(binding = 0) readonly buffer PositionsInput {
+    vec4 data[]; // (x, y, z, mass)
+} positionsInput;
+
+layout(binding = 1) readonly buffer VelocitiesInput {
+    vec4 data[]; // (vx, vy, vz, unused)
+} velocitiesInput;
+
+layout(binding = 2) buffer PositionsOutput {
+    vec4 data[]; // (new_x, new_y, new_z, mass)
+} positionsOutput;
+
+layout(binding = 3) buffer VelocitiesOutput {
+    vec4 data[]; // (new_vx, new_vy, new_vz, unused)
+} velocitiesOutput;
+
+layout(push_constant) uniform PushConstants {
+    uint numParticles;
+    float deltaTime;
+    float softeningSq; // Softening parameter squared
+    float gravitationalConstant; // G
+} pushConstants;
+
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+
+    if (i >= pushConstants.numParticles) {
+        return;
+    }
+
+    vec4 p_i = positionsInput.data[i];
+    vec4 v_i = velocitiesInput.data[i];
+
+    vec3 acceleration = vec3(0.0, 0.0, 0.0);
+
+    for (uint j = 0; j < pushConstants.numParticles; ++j) {
+        if (i == j) {
+            continue;
+        }
+
+        vec4 p_j = positionsInput.data[j];
+
+        vec3 r_vec = p_j.xyz - p_i.xyz;
+        float distSq = dot(r_vec, r_vec) + pushConstants.softeningSq;
+        float invDistCubed = inversesqrt(distSq) * inversesqrt(distSq) * inversesqrt(distSq);
+
+        acceleration += pushConstants.gravitationalConstant * p_j.w * r_vec * invDistCubed;
+    }
+
+    vec3 new_v = v_i.xyz + acceleration * pushConstants.deltaTime;
+    vec3 new_p = p_i.xyz + new_v * pushConstants.deltaTime; 
+
+    positionsOutput.data[i] = vec4(new_p, p_i.w);
+    velocitiesOutput.data[i] = vec4(new_v, 0.0); 
+}

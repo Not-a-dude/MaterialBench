@@ -1,0 +1,74 @@
+#version 450
+
+#define TILE_DIM 16
+layout (local_size_x = TILE_DIM, local_size_y = TILE_DIM, local_size_z = 1) in;
+
+// Input matrix A (N x K)
+layout(binding = 0) readonly buffer MatrixA {
+    float elements[];
+} matrixA;
+
+// Input matrix B (K x M)
+layout(binding = 1) readonly buffer MatrixB {
+    float elements[];
+} matrixB;
+
+// Output matrix C (N x M)
+layout(binding = 2) writeonly buffer MatrixC {
+    float elements[];
+} matrixC;
+
+layout(push_constant) uniform PushConstants {
+    uint N; // Number of rows in matrix A (and C)
+    uint M; // Number of columns in matrix B (and C)
+    uint K; // Number of columns in matrix A (and rows in B)
+} pc;
+
+shared float tileA[TILE_DIM][TILE_DIM];
+shared float tileB[TILE_DIM][TILE_DIM];
+
+void main() {
+    uint globalRow = gl_GlobalInvocationID.y;
+    uint globalCol = gl_GlobalInvocationID.x;
+
+    uint localRow = gl_LocalInvocationID.y;
+    uint localCol = gl_LocalInvocationID.x;
+
+    uint tileRow = gl_WorkGroupID.y;
+    uint tileCol = gl_WorkGroupID.x;
+
+    float sum = 0.0;
+
+    for (uint k_tile = 0; k_tile < (pc.K + TILE_DIM - 1) / TILE_DIM; ++k_tile) {
+
+        uint a_row = tileRow * TILE_DIM + localRow;
+        uint a_col = k_tile * TILE_DIM + localCol;
+
+        uint b_row = k_tile * TILE_DIM + localRow;
+        uint b_col = tileCol * TILE_DIM + localCol;
+
+        if (a_row < pc.N && a_col < pc.K) {
+            tileA[localRow][localCol] = matrixA.elements[a_row * pc.K + a_col];
+        } else {
+            tileA[localRow][localCol] = 0.0;
+        }
+
+        if (b_row < pc.K && b_col < pc.M) {
+            tileB[localRow][localCol] = matrixB.elements[b_row * pc.M + b_col];
+        } else {
+            tileB[localRow][localCol] = 0.0;
+        }
+
+        barrier();
+
+        for (uint k_inner = 0; k_inner < TILE_DIM; ++k_inner) {
+            sum += tileA[localRow][k_inner] * tileB[k_inner][localCol];
+        }
+
+        barrier();
+    }
+
+    if (globalRow < pc.N && globalCol < pc.M) {
+        matrixC.elements[globalRow * pc.M + globalCol] = sum;
+    }
+}
