@@ -53,13 +53,11 @@ class BenchActivity : ComponentActivity() {
     external fun nativeRunCpuMathMultiCoreBenchmark(activity: BenchActivity): Long
     external fun nativeRunRamSequentialWriteBenchmark(activity: BenchActivity): Long
     external fun nativeRunRamSequentialReadBenchmark(activity: BenchActivity): Long
-    external fun nativeRunRomRandomWriteBenchmark(activity: BenchActivity): Long
-    external fun nativeRunRomRandomReadBenchmark(activity: BenchActivity): Long
+    external fun nativeRunRomMixedRandomBenchmark(activity: BenchActivity): Long
     external fun nativeRunRomSequentialWriteBenchmark(activity: BenchActivity): Long
     external fun nativeRunRomSequentialReadBenchmark(activity: BenchActivity): Long
     external fun nativeRunCpuCryptoSingleCoreBenchmark(activity: BenchActivity): Long
     external fun nativeRunCpuCryptoMultiCoreBenchmark(activity: BenchActivity): Long
-    external fun nativeRunVulkanNBodyBenchmark(activity: BenchActivity): Long
     external fun nativeRunVulkanGEMMBenchmark(activity: BenchActivity): Long
     external fun hasVulkanRt(): Boolean
     external fun nativeBenchCleanup()
@@ -142,14 +140,12 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
     val cpuMathMultiString = stringResource(R.string.cpu_math_multi)
     val ramSeqWrite = stringResource(R.string.ram_seq_write)
     val ramSeqRead = stringResource(R.string.ram_seq_read)
-    val romRandWrite = stringResource(R.string.rom_rand_write)
-    val romRandRead = stringResource(R.string.rom_rand_read)
+    val romRandOps = stringResource(R.string.rom_rand_ops)
     val romSeqWrite = stringResource(R.string.rom_seq_write)
     val romSeqRead = stringResource(R.string.rom_seq_read)
     val cpuCryptoSingle = stringResource(R.string.cpu_crypto_single)
     val cpuCryptoMulti = stringResource(R.string.cpu_crypto_multi)
     val gpuVulkanComputeGemm = stringResource(R.string.vulkan_compute_gemm)
-    val gpuVulkanComputeNBody = stringResource(R.string.vulkan_compute_nbody)
     val gpuRT = stringResource(R.string.gpu_rt)
     val aiLiteRT = stringResource(R.string.ai_litert)
     val testSteps = remember {
@@ -162,14 +158,12 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
 
             // GPU
             TestStep("gpu_gemm", gpuVulkanComputeGemm, TestCategory.GPU),
-            TestStep("gpu_nbody", gpuVulkanComputeNBody, TestCategory.GPU),
             TestStep("gpu_rt", gpuRT, TestCategory.GPU),
 
             // MEM
             TestStep("ram_seq_write", ramSeqWrite, TestCategory.MEM),
             TestStep("ram_seq_read", ramSeqRead, TestCategory.MEM),
-            TestStep("rom_rand_write", romRandWrite, TestCategory.MEM),
-            TestStep("rom_rand_read", romRandRead, TestCategory.MEM),
+            TestStep("rom_rand_ops", romRandOps, TestCategory.MEM),
             TestStep("rom_seq_write", romSeqWrite, TestCategory.MEM),
             TestStep("rom_seq_read", romSeqRead, TestCategory.MEM),
 
@@ -278,15 +272,9 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
                             scale = 10_000_000
                         )
                     }
-                    "rom_rand_write" -> {
+                    "rom_rand_ops" -> {
                         runNativeBenchmark(
-                            call = { activity.nativeRunRomRandomWriteBenchmark(activity) },
-                            scale = 10_000_000
-                        )
-                    }
-                    "rom_rand_read" -> {
-                        runNativeBenchmark(
-                            call = { activity.nativeRunRomRandomReadBenchmark(activity) },
+                            call = { activity.nativeRunRomMixedRandomBenchmark(activity) },
                             scale = 10_000_000
                         )
                     }
@@ -307,16 +295,6 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
                             runNativeBenchmark(
                                 call = { activity.nativeRunVulkanGEMMBenchmark(activity) },
                                 scale = 100_000_000
-                            )
-                        } else {
-                            0
-                        }
-                    }
-                    "gpu_nbody" -> {
-                        if (hasVulkanCompute) {
-                            runNativeBenchmark(
-                                call = { activity.nativeRunVulkanNBodyBenchmark(activity) },
-                                scale = 10_000_000
                             )
                         } else {
                             0
