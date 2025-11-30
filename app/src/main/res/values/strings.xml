@@ -30,8 +30,7 @@
     <string name="back_to_menu">Back to Menu</string>
     <string name="ram_seq_write">RAM — Sequential write</string>
     <string name="ram_seq_read">RAM — Sequential read</string>
-    <string name="rom_rand_write">ROM — Random write</string>
-    <string name="rom_rand_read">ROM — Random read</string>
+    <string name="rom_rand_ops">ROM — Random operations</string>
     <string name="rom_seq_write">ROM — Sequential write</string>
     <string name="rom_seq_read">ROM — Sequential read</string>
     <string name="cpu_crypto_single">CPU — Crypto (Single core)</string>
@@ -54,7 +53,6 @@
     <string name="device_incomplete_feature">Some required features are missing. Test score is incomplete.</string>
     <string name="bench_version">Version: %1$s (%2$d)</string>
     <string name="vulkan_compute_gemm" translatable="false">GPU — GEMM</string>
-    <string name="vulkan_compute_nbody" translatable="false">GPU — N-Body</string>
     <string name="need_more_ram">You need more free RAM to run the test</string>
     <string name="need_more_rom">You need more free ROM to run the test</string>
     <string name="low_bat_temp_dialog_title">Warning: low temperature</string>

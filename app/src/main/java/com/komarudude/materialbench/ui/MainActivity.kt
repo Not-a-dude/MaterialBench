@@ -523,14 +523,12 @@ fun BenchMainScreen() {
     val aiIconText = stringResource(id = R.string.ai_icon_text)
     val ramSeqWrite = stringResource(R.string.ram_seq_write)
     val ramSeqRead = stringResource(R.string.ram_seq_read)
-    val romRandWrite = stringResource(R.string.rom_rand_write)
-    val romRandRead = stringResource(R.string.rom_rand_read)
+    val romRandOps = stringResource(R.string.rom_rand_ops)
     val romSeqWrite = stringResource(R.string.rom_seq_write)
     val romSeqRead = stringResource(R.string.rom_seq_read)
     val cpuCryptoSingle = stringResource(R.string.cpu_crypto_single)
     val cpuCryptoMulti = stringResource(R.string.cpu_crypto_multi)
     val gpuVulkanComputeGemm = stringResource(R.string.vulkan_compute_gemm)
-    val gpuVulkanComputeNBody = stringResource(R.string.vulkan_compute_nbody)
     val gpuRT = stringResource(R.string.gpu_rt)
     val aiLiteRT = stringResource(R.string.ai_litert)
 
@@ -590,14 +588,12 @@ fun BenchMainScreen() {
     )
     val gpuSubBenchmarks = listOf(
         SubBenchmark(titleKey = gpuVulkanComputeGemm, scoreKey = "gpu_gemm"),
-        SubBenchmark(titleKey = gpuVulkanComputeNBody, scoreKey = "gpu_nbody"),
         SubBenchmark(titleKey = gpuRT, scoreKey = "gpu_rt"),
     )
     val memSubBenchmarks = listOf(
         SubBenchmark(titleKey = ramSeqWrite, scoreKey = "ram_seq_write"),
         SubBenchmark(titleKey = ramSeqRead, scoreKey = "ram_seq_read"),
-        SubBenchmark(titleKey = romRandWrite, scoreKey = "rom_rand_write"),
-        SubBenchmark(titleKey = romRandRead, scoreKey = "rom_rand_read"),
+        SubBenchmark(titleKey = romRandOps, scoreKey = "rom_rand_ops"),
         SubBenchmark(titleKey = romSeqWrite, scoreKey = "rom_seq_write"),
         SubBenchmark(titleKey = romSeqRead, scoreKey = "rom_seq_read")
     )

@@ -21,8 +21,7 @@
     <string name="back_to_menu">Вернуться в меню</string>
     <string name="ram_seq_write">ОЗУ — Последовательная запись</string>
     <string name="ram_seq_read">ОЗУ — Последовательное чтение</string>
-    <string name="rom_rand_write">ПЗУ — Случайная запись</string>
-    <string name="rom_rand_read">ПЗУ — Случайное чтение</string>
+    <string name="rom_rand_ops">ПЗУ — Случайные операции</string>
     <string name="rom_seq_write">ПЗУ — Последовательная запись</string>
     <string name="rom_seq_read">ПЗУ — Последовательное чтение</string>
     <string name="cpu_math_single">CPU — Math (Одноядерный)</string>
