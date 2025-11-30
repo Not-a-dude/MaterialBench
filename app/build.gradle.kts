@@ -13,7 +13,7 @@ android {
         minSdk = 30
         targetSdk = 36
         versionCode = 18
-        versionName = "1.2.0-beta4"
+        versionName = "1.2.0-beta5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -27,10 +27,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file(project.findProperty("KEYSTORE_FILE_PATH") as String)
-            storePassword = project.findProperty("KEYSTORE_PASSWORD") as String
-            keyAlias = project.findProperty("KEY_ALIAS") as String
-            keyPassword = project.findProperty("KEY_PASSWORD") as String
+            storeFile = file(project.property("KEYSTORE_FILE_PATH").toString())
+            storePassword = project.property("KEY_PASSWORD").toString()
+            keyAlias = project.property("KEY_ALIAS").toString()
+            keyPassword = project.property("KEYSTORE_PASSWORD").toString()
         }
     }
 
