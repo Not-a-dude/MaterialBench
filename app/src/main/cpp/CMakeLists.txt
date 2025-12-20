@@ -6,11 +6,9 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 add_subdirectory(external/boringssl)
 
-find_program(VULKAN_GLSLC_EXECUTABLE NAMES glslc)
-
+find_program(VULKAN_GLSLC_EXECUTABLE NAMES glslc glslc.exe)
 if(NOT VULKAN_GLSLC_EXECUTABLE)
-    message(STATUS "glslc not found in PATH. Please, indicate path to glslc.exe manualy.")
-    set(VULKAN_GLSLC_EXECUTABLE "" CACHE FILEPATH "Path to glslc.exe (part of Vulkan SDK)")
+    message(FATAL_ERROR "glslc not found! Install Vulkan SDK or shaderc.")
 endif()
 
 set(SOURCES
@@ -23,33 +21,27 @@ set(SOURCES
         vulkan_compute.cpp
 )
 
+set(SH_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/gemm_shader_tiled.comp")
+set(SH_BINARY "${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv")
+set(SH_HEADER "${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv.h")
+
 add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv
-        COMMAND ${Vulkan_GLSLC_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/gemm_shader_tiled.comp -o ${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/gemm_shader_tiled.comp
+        OUTPUT "${SH_BINARY}"
+        COMMAND ${VULKAN_GLSLC_EXECUTABLE} "${SH_SOURCE}" -o "${SH_BINARY}"
+        DEPENDS "${SH_SOURCE}"
         VERBATIM
 )
 
 add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv.h
-        COMMAND ${Python3_EXECUTABLE} -c "import sys; p=r'${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv'; out=r'${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv.h'; name='gemm_shader_tiled_comp_spv'; d=open(p,'rb').read(); open(out,'w').write('unsigned char %s[] = {%s};\\nunsigned int %s_len = %d;\\n' % (name, ','.join('0x%02x' % b for b in d), name, len(d)))"
-        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv
+        OUTPUT "${SH_HEADER}"
+        COMMAND ${Python3_EXECUTABLE} -c "import sys; d=open(r'${SH_BINARY}','rb').read(); out=open(r'${SH_HEADER}','w'); name='gemm_shader_tiled_comp_spv'; out.write('unsigned char %s[] = {%s};\\nunsigned int %s_len = %d;\\n' % (name, ','.join('0x%02x' % b for b in d), name, len(d))); out.close()"
+        DEPENDS "${SH_BINARY}"
         VERBATIM
 )
 
-add_custom_target(compile_shader DEPENDS
-    ${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv.h
-)
+add_library(materialbench SHARED ${SOURCES} "${SH_HEADER}")
 
-add_library(materialbench SHARED ${SOURCES})
-
-add_dependencies(materialbench compile_shader)
-
-target_sources(materialbench PRIVATE
-    ${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv.h
-)
-
-set_property(SOURCE ${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv.h PROPERTY GENERATED TRUE)
+set_source_files_properties("${SH_HEADER}" PROPERTIES GENERATED TRUE)
 
 target_include_directories(materialbench PRIVATE
         external/boringssl/include
@@ -58,11 +50,7 @@ target_include_directories(materialbench PRIVATE
 
 target_compile_features(materialbench PRIVATE cxx_std_17)
 
-target_compile_options(materialbench PRIVATE
-        -O3
-        -funroll-loops
-        -flto=thin
-)
+target_compile_options(materialbench PRIVATE -O3 -funroll-loops -flto=thin)
 
 target_link_libraries(materialbench
         android
