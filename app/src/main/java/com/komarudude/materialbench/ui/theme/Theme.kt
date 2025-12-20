@@ -76,7 +76,6 @@ fun MaterialBenchTheme(
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-
     val useDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
     val colorScheme = when {
