@@ -3,40 +3,40 @@ package com.komarudude.materialbench.ui
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.compose.setContent
+import android.util.Log
+import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.Keep
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.*
-import androidx.compose.ui.res.stringResource
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import android.content.pm.PackageManager
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import com.komarudude.materialbench.ui.theme.MaterialBenchTheme
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import android.view.WindowManager
-import android.util.Log
-import android.widget.Toast
 import com.komarudude.materialbench.BenchScores
-import com.komarudude.materialbench.utils.MobileNetV4Classifier
 import com.komarudude.materialbench.R
+import com.komarudude.materialbench.ui.theme.MaterialBenchTheme
+import com.komarudude.materialbench.utils.MobileNetV4Classifier
 import com.komarudude.materialbench.utils.RetrofitClient
 import com.komarudude.materialbench.utils.ScoreRequest
 import com.komarudude.materialbench.utils.loadAndPrepareImage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 private const val LITE_RT_SCORE_SCALE = 1_000_000_0
 
@@ -172,7 +172,7 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
         )
     }
 
-    val pm: PackageManager = context.packageManager
+    val pm = context.packageManager
     val hasVulkanCompute = pm.hasSystemFeature("android.hardware.vulkan.compute")
 
     val totalSteps = testSteps.size
@@ -337,7 +337,7 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
                     }
                 }
             } catch (_: Exception) {
-                generatedScore = (1)
+                generatedScore = 1
             }
 
             stepScores[step.id] = generatedScore
@@ -379,15 +379,18 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
 
     Column(
         modifier = modifier
+            .verticalScroll(rememberScrollState())
             .fillMaxSize()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
+        ElevatedCard(
+            shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            )
         ) {
             Column(
                 modifier = Modifier
@@ -400,90 +403,73 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
 
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(150.dp)
+                    modifier = Modifier.size(180.dp)
                 ) {
                     CircularWavyProgressIndicator(
                         progress = { animatedProgress },
-                        modifier = Modifier.size(150.dp),
+                        modifier = Modifier.size(180.dp),
                         color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
                     )
-                    Text(
-                        text = "${(animatedProgress * 100).toInt()}%",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${(animatedProgress * 100).toInt()}%",
+                            style = MaterialTheme.typography.displaySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (finished) finishedString else runningString,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 Text(
                     text = overallProgressTitle,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
                 )
 
                 if (currentStepIndex >= 0 && currentStepIndex < testSteps.size) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "$runningString ${testSteps[currentStepIndex].label}")
-                } else if (finished) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = finishedString)
+                    Text(
+                        text = testSteps[currentStepIndex].label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            StatCard(
-                label = "CPU",
-                percent = categoryProgressPercent[TestCategory.CPU] ?: 0,
-                subLabel = if (currentStepIndex >= 0 && testSteps[currentStepIndex].category == TestCategory.CPU && !finished)
-                    "$runningString ${testSteps[currentStepIndex].label}"
-                else
-                    "${categoryScores[TestCategory.CPU] ?: 0}",
-                showLoading = (currentStepIndex >= 0 && testSteps[currentStepIndex].category == TestCategory.CPU && !finished),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            StatCard(
-                label = "GPU",
-                percent = categoryProgressPercent[TestCategory.GPU] ?: 0,
-                subLabel = if (currentStepIndex >= 0 && testSteps[currentStepIndex].category == TestCategory.GPU && !finished)
-                    "$runningString ${testSteps[currentStepIndex].label}"
-                else
-                    "${categoryScores[TestCategory.GPU] ?: 0}",
-                showLoading = (currentStepIndex >= 0 && testSteps[currentStepIndex].category == TestCategory.GPU && !finished),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            StatCard(
-                label = "Memory",
-                percent = categoryProgressPercent[TestCategory.MEM] ?: 0,
-                subLabel = if (currentStepIndex >= 0 && testSteps[currentStepIndex].category == TestCategory.MEM && !finished)
-                    "$runningString ${testSteps[currentStepIndex].label}"
-                else
-                    "${categoryScores[TestCategory.MEM] ?: 0}",
-                showLoading = (currentStepIndex >= 0 && testSteps[currentStepIndex].category == TestCategory.MEM && !finished),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            StatCard(
-                label = "AI",
-                percent = categoryProgressPercent[TestCategory.AI] ?: 0,
-                subLabel = if (currentStepIndex >= 0 && testSteps[currentStepIndex].category == TestCategory.AI && !finished)
-                    "$runningString ${testSteps[currentStepIndex].label}"
-                else
-                    "${categoryScores[TestCategory.AI] ?: 0}",
-                showLoading = (currentStepIndex >= 0 && testSteps[currentStepIndex].category == TestCategory.AI && !finished),
-                modifier = Modifier.fillMaxWidth()
-            )
+            TestCategory.entries.forEach { cat ->
+                StatCard(
+                    label = cat.name,
+                    percent = categoryProgressPercent[cat] ?: 0,
+                    subLabel = if (currentStepIndex >= 0 && testSteps[currentStepIndex].category == cat && !finished)
+                        testSteps[currentStepIndex].label
+                    else
+                        "${categoryScores[cat] ?: 0}",
+                    showLoading = (currentStepIndex >= 0 && testSteps[currentStepIndex].category == cat && !finished),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
         if (finished) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onBackToMenu) {
-                Text(backToMenuString)
+            Spacer(modifier = Modifier.weight(1f))
+            Button(
+                onClick = onBackToMenu,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text(backToMenuString, style = MaterialTheme.typography.titleMedium)
             }
         }
 
@@ -491,43 +477,69 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
     }
 }
 
+@OptIn(
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalMaterial3Api::class
+)
 @Composable
 fun StatCard(label: String, percent: Int, subLabel: String, showLoading: Boolean, modifier: Modifier = Modifier) {
+    val animatedPercent by animateFloatAsState(targetValue = percent.toFloat() / 100f, label = "catProgress")
+
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = if (showLoading) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer
+        )
     ) {
         Column(
             modifier = Modifier
-                .padding(12.dp)
+                .padding(16.dp)
                 .fillMaxWidth()
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "${percent}%",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.width(64.dp)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = label, style = MaterialTheme.typography.titleSmall)
-                    Spacer(modifier = Modifier.height(6.dp))
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
                     if (showLoading) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = subLabel, style = MaterialTheme.typography.bodyMedium)
-                        }
+                        LoadingIndicator(
+                            modifier = Modifier.size(40.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     } else {
-                        Text(text = subLabel, style = MaterialTheme.typography.headlineSmall)
+                        Text(
+                            text = "${percent}%",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (percent == 100) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
+
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = subLabel,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LinearWavyProgressIndicator(
+                progress = { animatedPercent },
+                modifier = Modifier.fillMaxWidth(),
+                color = if (showLoading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
+            )
         }
     }
 }

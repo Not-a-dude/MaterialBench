@@ -23,6 +23,12 @@ android {
             abiFilters.add("arm64-v8a")
             abiFilters.add("x86_64")
         }
+
+        val compVersion = System.getenv("COMPANION_MIN_VERSION") ?: "11"
+        val compHash = System.getenv("COMPANION_SHA256") ?: "429f6c1e57e8b9b7474c91d5109fcc5e66f78211c7b2bf14bdf4fb7999c93cbd"
+
+        buildConfigField("long", "COMPANION_MIN_VERSION", "${compVersion}L")
+        buildConfigField("String", "COMPANION_SHA256", "\"$compHash\"")
     }
 
     signingConfigs {
@@ -60,6 +66,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     externalNativeBuild {
@@ -84,6 +91,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.ui.tooling)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.material3.adaptive.navigation.suite)
     implementation(libs.androidx.core.splash.screen) // На будущее, сейчас я не знаю как реализовать это
     implementation(libs.litert)
     testImplementation(libs.junit)

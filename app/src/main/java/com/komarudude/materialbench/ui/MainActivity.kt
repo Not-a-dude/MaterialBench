@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.DeviceThermostat
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.*
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -99,6 +100,7 @@ import com.patrykandpatrick.vico.core.common.Fill
 import com.patrykandpatrick.vico.core.cartesian.Zoom
 import com.patrykandpatrick.vico.core.common.data.ExtraStore
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 
 private val StartAxisValueFormatter = CartesianValueFormatter.decimal(DecimalFormat("#.## °C"))
 
@@ -153,6 +155,7 @@ private fun TemperatureChart(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     overallScore: String,
@@ -161,32 +164,90 @@ fun MainScreen(
     packageInfo: PackageInfo,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            OverallScoreCard(score = overallScore, percentileRank = percentileRank)
-        }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-        items(benchmarks.size) { index -> // Used index here
-            BenchmarkCard(benchmark = benchmarks[index])
-        }
+    Scaffold(
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.material_bench_title),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            )
+        },
+        floatingActionButton = {
+            val context = LocalContext.current
+            ExtendedFloatingActionButton(
+                onClick = handler@{
+                    val stat = StatFs(context.filesDir.absolutePath)
+                    val gigabytesAvailable = stat.availableBytes.toDouble() / (1024 * 1024 * 1024)
+                    val memAvailable = getSystemAvailableMemory(context)
 
-        item {
-            val versionText = stringResource(R.string.bench_version, packageInfo.versionName?: "", packageInfo.longVersionCode.toInt())
-            Text(versionText, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f), fontStyle = FontStyle.Italic, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    if (isStressRunning) {
+                        Toast.makeText(context, context.getString(R.string.stress_running), Toast.LENGTH_SHORT).show()
+                        return@handler
+                    }
+                    if (memAvailable < 512) {
+                        Toast.makeText(context, context.getString(R.string.need_more_ram), Toast.LENGTH_LONG).show()
+                        return@handler
+                    }
+                    if (gigabytesAvailable < 1.5) {
+                        Toast.makeText(context, context.getString(R.string.need_more_rom), Toast.LENGTH_LONG).show()
+                        return@handler
+                    }
+                    val intent = Intent(context, BenchActivity::class.java)
+                    context.startActivity(intent)
+                },
+                icon = { Icon(Icons.Default.LocalFireDepartment, null) },
+                text = { Text(stringResource(id = R.string.run_benchmark)) },
+                expanded = true
+            )
         }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                OverallScoreCard(score = overallScore, percentileRank = percentileRank)
+            }
 
-        item {
-            Spacer(modifier = Modifier.height(96.dp))
+            items(benchmarks.size) { index ->
+                BenchmarkCard(benchmark = benchmarks[index])
+            }
+
+            item {
+                val versionText = stringResource(R.string.bench_version, packageInfo.versionName?: "", packageInfo.longVersionCode.toInt())
+                Text(
+                    text = versionText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    fontStyle = FontStyle.Italic,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(96.dp)) // Место под FAB
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -315,7 +376,11 @@ fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
             modifier = Modifier.padding(24.dp)
         ) {
 
-            Text(text = stringResource(R.string.select_stress_modes))
+            Text(
+                text = stringResource(R.string.select_stress_modes),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
 
             Spacer(Modifier.height(16.dp))
 
@@ -351,6 +416,13 @@ fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
 
             Spacer(Modifier.height(32.dp))
 
+            if (isStressRunning) {
+                LinearWavyProgressIndicator(
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(32.dp))
+            }
+
             Button(
                 onClick = {
                     if (!isStressRunning) {
@@ -370,13 +442,24 @@ fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
                         mainActivity.nativeStopCpuStress()
                         mainActivity.nativeStopGpuStress()
                     }
-                }
+                },
+                modifier = Modifier.height(56.dp).fillMaxWidth(0.7f),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text(if (!isStressRunning) {
-                    stringResource(R.string.stress_start)
-                } else {
-                    stringResource(R.string.stress_stop)
+                if (isStressRunning) {
+                    LoadingIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(Modifier.width(12.dp))
                 }
+                Text(
+                    text = if (!isStressRunning) {
+                        stringResource(R.string.stress_start)
+                    } else {
+                        stringResource(R.string.stress_stop)
+                    },
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
         }
@@ -548,36 +631,16 @@ fun BenchMainScreen() {
                 context.packageManager.getPackageInfo(context.packageName, 0)
             }
         } else {
-            // For previews or non-ComponentActivity contexts, provide a dummy
-            PackageInfo().apply {
-                versionName = "UNKNOWN"
-                longVersionCode = 1L
-            }
+            PackageInfo().apply { versionName = "UNKNOWN"; longVersionCode = 1L }
         }
-    } catch (e: UnsupportedOperationException) {
-        // Catch the specific exception that occurs in previews
-        Log.e("BenchMainScreen", "getPackageInfo not implemented in subclass for preview: ${e.message}")
-        PackageInfo().apply {
-            versionName = "UNKNOWN"
-            longVersionCode = 1L
-        }
-    } catch (e: Exception) {
-        Log.e("BenchMainScreen", "Error getting package info: ${e.message}")
-        PackageInfo().apply {
-            versionName = "UNKNOWN"
-        }
+    } catch (_: Exception) {
+        PackageInfo().apply { versionName = "UNKNOWN" }
     }
 
     DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                onResumeTrigger++
-            }
-        }
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) onResumeTrigger++ }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     val cpuSubBenchmarks = listOf(
@@ -597,9 +660,7 @@ fun BenchMainScreen() {
         SubBenchmark(titleKey = romSeqWrite, scoreKey = "rom_seq_write"),
         SubBenchmark(titleKey = romSeqRead, scoreKey = "rom_seq_read")
     )
-    val aiSubBenchmarks = listOf(
-        SubBenchmark(titleKey = aiLiteRT, scoreKey = "ai_litert")
-    )
+    val aiSubBenchmarks = listOf(SubBenchmark(titleKey = aiLiteRT, scoreKey = "ai_litert"))
 
     val viewModel: BenchViewModel = viewModel()
     val percentileRank by viewModel.percentileRank
@@ -607,58 +668,26 @@ fun BenchMainScreen() {
     LaunchedEffect(onResumeTrigger) {
         withContext(Dispatchers.IO) {
             val currentOverallScore = BenchScores.getScore(context, "overall_score")
-            overallScore = currentOverallScore.let {
-                if (it == 0) "0" else it.toString()
-            }
+            overallScore = if (currentOverallScore == 0) "0" else currentOverallScore.toString()
 
             val cpuScore = BenchScores.getScore(context, "CPU Benchmark")
             val gpuScore = BenchScores.getScore(context, "GPU Benchmark")
             val memScore = BenchScores.getScore(context, "Memory Test")
             val aiScore = BenchScores.getScore(context, "AI Test")
 
-            val allSubBenchmarks = listOf(cpuSubBenchmarks, gpuSubBenchmarks, memSubBenchmarks, aiSubBenchmarks).flatten()
-            allSubBenchmarks.forEach { sub ->
+            listOf(cpuSubBenchmarks, gpuSubBenchmarks, memSubBenchmarks, aiSubBenchmarks).flatten().forEach { sub ->
                 val scoreValue = BenchScores.getScore(context, sub.scoreKey)
                 sub.score = if (scoreValue == 0) null else scoreValue.toString()
             }
 
             benchmarks = listOf(
-                Benchmark(
-                    title = cpuBenchmarkTitle,
-                    description = cpuBenchmarkDescription,
-                    iconText = cpuIconText,
-                    score = if (cpuScore == 0) null else cpuScore.toString(),
-                    onClick = { /* Запуск CPU теста */ },
-                    subBenchmarks = cpuSubBenchmarks
-                ),
-                Benchmark(
-                    title = gpuBenchmarkTitle,
-                    description = gpuBenchmarkDescription,
-                    iconText = gpuIconText,
-                    score = if (gpuScore == 0) null else gpuScore.toString(),
-                    onClick = { /* Запуск GPU теста */ },
-                    subBenchmarks = gpuSubBenchmarks
-                ),
-                Benchmark(
-                    title = memoryTestTitle,
-                    description = memoryTestDescription,
-                    iconText = memIconText,
-                    score = if (memScore == 0) null else memScore.toString(),
-                    onClick = { /* Запуск теста памяти */ },
-                    subBenchmarks = memSubBenchmarks
-                ),
-                Benchmark(
-                    title = aiTestTitle,
-                    description = aiTestDescription,
-                    iconText = aiIconText,
-                    score = if (aiScore == 0) null else aiScore.toString(),
-                    onClick = { /* Запуск теста ИИ */ },
-                    subBenchmarks = aiSubBenchmarks
-                )
+                Benchmark(cpuBenchmarkTitle, cpuBenchmarkDescription, cpuIconText, if (cpuScore == 0) null else cpuScore.toString(), {}, cpuSubBenchmarks),
+                Benchmark(gpuBenchmarkTitle, gpuBenchmarkDescription, gpuIconText, if (gpuScore == 0) null else gpuScore.toString(), {}, gpuSubBenchmarks),
+                Benchmark(memoryTestTitle, memoryTestDescription, memIconText, if (memScore == 0) null else memScore.toString(), {}, memSubBenchmarks),
+                Benchmark(aiTestTitle, aiTestDescription, aiIconText, if (aiScore == 0) null else aiScore.toString(), {}, aiSubBenchmarks)
             )
 
             if (currentOverallScore > 0) {
-                // Ensure context is ComponentActivity before accessing packageManager
                 if (context is ComponentActivity) {
                     val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0)).longVersionCode
@@ -668,7 +697,6 @@ fun BenchMainScreen() {
                     }
                     viewModel.fetchPercentileRank(currentOverallScore, versionCode)
                 } else {
-                    // For previews or non-ComponentActivity contexts, use the mock packageInfo's versionCode
                     viewModel.fetchPercentileRank(currentOverallScore, packageInfo.longVersionCode)
                 }
             }
@@ -679,89 +707,33 @@ fun BenchMainScreen() {
         Toast.makeText(context, context.getString(R.string.stress_running), Toast.LENGTH_SHORT).show()
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(id = R.string.material_bench_title),
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = handler@{
-                    // 1. Получение данных
-                    val stat = StatFs(context.filesDir.absolutePath)
-                    val gigabytesAvailable = stat.availableBytes.toDouble() / (1024 * 1024 * 1024)
-                    val memAvailable = getSystemAvailableMemory(context)
-
-                    if (isStressRunning) {
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.stress_running),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        return@handler
-                    }
-
-                    if (memAvailable < 512) {
-                        val message = context.getString(R.string.need_more_ram)
-                        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                        return@handler
-                    }
-
-                    if (gigabytesAvailable < 1.5) {
-                        val message = context.getString(R.string.need_more_rom)
-                        Toast.makeText(
-                            context,
-                            message,
-                            Toast.LENGTH_LONG
-                        ).show()
-                        return@handler
-                    }
-
-                    val intent = Intent(context, BenchActivity::class.java)
-                    context.startActivity(intent)
-                },
-                icon = {},
-                text = { Text(stringResource(id = R.string.run_benchmark)) }
-            )
-        },
-        bottomBar = {
-            NavigationBar(windowInsets = NavigationBarDefaults.windowInsets) {
-                Destination.entries.forEachIndexed { index, destination ->
-                    NavigationBarItem(
-                        selected = selectedDestination == index,
-                        onClick = {
-                            if (isStressRunning) {
-                                Toast.makeText(context, R.string.stress_running, Toast.LENGTH_SHORT).show()
-                            } else {
-                                navController.navigate(route = destination.route)
-                                selectedDestination = index
+    NavigationSuiteScaffold(
+        navigationSuiteItems = {
+            Destination.entries.forEachIndexed { index, destination ->
+                item(
+                    selected = selectedDestination == index,
+                    onClick = {
+                        if (isStressRunning) {
+                            Toast.makeText(context, R.string.stress_running, Toast.LENGTH_SHORT).show()
+                        } else {
+                            navController.navigate(route = destination.route) {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                        },
-                        icon = {
-                            Icon(
-                                destination.icon,
-                                contentDescription = destination.contentDescription
-                            )
-                        },
-                        label = { Text(destination.label) }
-                    )
-                }
+                            selectedDestination = index
+                        }
+                    },
+                    icon = { Icon(destination.icon, contentDescription = destination.contentDescription) },
+                    label = { Text(destination.label) }
+                )
             }
         }
-    ) { innerPadding ->
+    ) {
         NavHost(
             navController = navController,
             startDestination = startDestination.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.fillMaxSize()
         ) {
             composable(Destination.MAIN.route) {
                 MainScreen(overallScore = overallScore, benchmarks = benchmarks, percentileRank = percentileRank, packageInfo = packageInfo)
@@ -778,69 +750,73 @@ fun OverallScoreCard(score: String, percentileRank: String?) {
     val viewModel: BenchViewModel = viewModel()
     val isFetchingRank by viewModel.isFetchingRank
 
-    Card(
+    // Используем ElevatedCard и Large Shape для основного акцента
+    ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
+        shape = MaterialTheme.shapes.large, // 24dp по дефолту из нашей Theme.kt
+        colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         )
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = stringResource(id = R.string.overall_score_title),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = score,
-                style = MaterialTheme.typography.displayLarge,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.displayLarge, // Дефолтный крупный стиль
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Кастомный трек прогресса для визуальной чистоты
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(12.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f))
+            ) {
+                if (percentileRank != null) {
+                    val progress = percentileRank.removeSuffix("%").replace(',', '.').toFloat() / 100f
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(progress)
+                            .fillMaxHeight()
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                } else if (isFetchingRank) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.1f)
+                            .fillMaxHeight()
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             if (percentileRank != null) {
                 Text(
                     text = stringResource(R.string.top_percentile, percentileRank),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { percentileRank.removeSuffix("%").replace(',', '.').toFloat() / 100f },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = MaterialTheme.colorScheme.primary
                 )
             } else {
                 Text(
                     text = stringResource(id = if (isFetchingRank) R.string.wait_rank_data else R.string.no_rank_data),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                if (isFetchingRank) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .clip(RoundedCornerShape(4.dp)),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    LinearProgressIndicator(
-                        progress = { 0f },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .clip(RoundedCornerShape(4.dp)),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
             }
         }
     }
@@ -850,31 +826,36 @@ fun OverallScoreCard(score: String, percentileRank: String?) {
 fun BenchmarkCard(benchmark: Benchmark) {
     var isExpanded by remember { mutableStateOf(false) }
 
+    // Используем Card с surfaceContainer для разделения уровней без явных теней
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium, // 16dp
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
     ) {
         Column(
-            modifier = Modifier.clickable { isExpanded = !isExpanded }
+            modifier = Modifier
+                .clickable { isExpanded = !isExpanded }
+                .padding(8.dp) // Внутренний паддинг
         ) {
             Row(
                 modifier = Modifier.padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Иконка в скругленном квадрате (Squircle)
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
+                        .size(48.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = benchmark.iconText,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
@@ -885,77 +866,69 @@ fun BenchmarkCard(benchmark: Benchmark) {
                 ) {
                     Text(
                         text = benchmark.title,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = benchmark.description,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                if (benchmark.score != null) {
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) {
-                        Text(
-                            text = benchmark.score,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = stringResource(id = R.string.points),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                } else {
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "?", // Display "?" if score is null
-                        style = MaterialTheme.typography.titleLarge,
+                        text = benchmark.score ?: "?",
+                        style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 8.dp)
+                        fontWeight = FontWeight.Bold
                     )
-                }
-
-                if (benchmark.subBenchmarks.isNotEmpty()) {
-                    IconButton(onClick = { isExpanded = !isExpanded }) {
+                    if (benchmark.subBenchmarks.isNotEmpty()) {
                         Icon(
                             imageVector = if (isExpanded) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown,
-                            contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(
-                                R.string.expand)
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.outline
                         )
                     }
                 }
             }
 
             AnimatedVisibility(visible = isExpanded && benchmark.subBenchmarks.isNotEmpty()) {
-                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
-                    benchmark.subBenchmarks.forEach { subBenchmark ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 16.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh) // Чуть светлее фон для подпунктов
+                        .padding(12.dp)
+                ) {
+                    benchmark.subBenchmarks.forEachIndexed { index, subBenchmark ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                                .padding(vertical = 6.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = subBenchmark.titleKey,
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = subBenchmark.score ?: "?",
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
-                        HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
+                        if (index < benchmark.subBenchmarks.size - 1) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        }
                     }
                 }
             }

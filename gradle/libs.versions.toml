@@ -11,6 +11,7 @@
     composeMaterial3Android = "1.4.0"
     uiTooling = "1.9.3"
     material3 = "1.5.0-alpha08"
+    material3AdaptiveNavigationSuite = "1.5.0-alpha11"
     litert = "2.0.2"
     navigationCompose = "2.9.5"
     retrofit = "3.0.0"
@@ -39,6 +40,7 @@
     androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "uiTooling" }
     androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
     androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+    androidx-material3-adaptive-navigation-suite = { group = "androidx.compose.material3", name = "material3-adaptive-navigation-suite", version.ref = "material3AdaptiveNavigationSuite" }
     litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert" }
     retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
     retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
