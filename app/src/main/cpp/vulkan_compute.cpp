@@ -9,7 +9,6 @@
 #include <string>
 #include <algorithm>
 #include <vulkan/vulkan.h>
-#include "shader.comp.spv.h"
 #include "gemm_shader_tiled.comp.spv.h"
 #include "utils.h"
 
