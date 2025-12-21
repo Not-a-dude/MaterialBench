@@ -48,4 +48,7 @@
     <string name="need_more_rom">Вам нужно больше свободной ПЗУ для запуска теста</string>
     <string name="low_bat_temp_dialog_title">Внимание: низкая температура</string>
     <string name="low_bat_temp_dialog_msg">Температура устройства (%1$.1f°C) слишком низкая. Продолжение стресс-теста может привести к сбоям в работе или возможному повреждению вашего устройства.</string>
+    <string name="integrity_error_title">Ошибка целостности</string>
+    <string name="integrity_error_text">Версия или подпись графического теста не совпадает с заданными для этой версии основного приложения. Пожалуйста, загрузите корректную версию. Этот подтест будет пропущен.</string>
+    <string name="ok">Понятно</string>
 </resources>
