@@ -47,7 +47,6 @@
     <string name="stress_stop">Stop test</string>
     <string name="high_bat_temp_dialog_title">Warning: high temperature</string>
     <string name="high_bat_temp_dialog_msg">The device temperature (%1$.1f°C) is too high. Continuing the stress test may cause overheating and potential damage to your device.</string>
-    <string name="ok" translatable="false">OK</string>
     <string name="gpu_rt">GPU — Cubes</string>
     <string name="device_not_supported">Device not supported</string>
     <string name="device_incomplete_feature">Some required features are missing. Test score is incomplete.</string>
@@ -57,4 +56,7 @@
     <string name="need_more_rom">You need more free ROM to run the test</string>
     <string name="low_bat_temp_dialog_title">Warning: low temperature</string>
     <string name="low_bat_temp_dialog_msg">The device temperature (%1$.1f°C) is too low. Continuing the stress test may cause malfunction or potential damage to your device.</string>
+    <string name="integrity_error_title">Integrity Error</string>
+    <string name="integrity_error_text">The graphics test version or signature does not match the requirements for this version of the main app. Please download the correct version. This subtest will be skipped.</string>
+    <string name="ok">Got it</string>
 </resources>

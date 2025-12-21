@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeveloperBoardOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +35,7 @@ import com.komarudude.materialbench.utils.MobileNetV4Classifier
 import com.komarudude.materialbench.utils.RetrofitClient
 import com.komarudude.materialbench.utils.ScoreRequest
 import com.komarudude.materialbench.utils.loadAndPrepareImage
+import com.komarudude.materialbench.utils.IntegrityChecker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -182,6 +185,8 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
 
     var currentStepProgress by remember { mutableFloatStateOf(0f) }
 
+    var showIntegrityDialog by remember { mutableStateOf(false) }
+
     val progress by remember {
         derivedStateOf {
             if (currentStepIndex < 0) 0f
@@ -302,18 +307,27 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
                     }
                     "gpu_rt" -> {
                         if (isSupportVulkanRT) {
-                            val uePackageName = "com.komarudude.materialbench.rttest" // Замените если форкаете и у вас своё имя пакета
-                            val ueActivityName = "com.epicgames.unreal.GameActivity"
-                            Log.i("MB_RT", "Starting benchmark activity...")
+                            val isTrustworthy = IntegrityChecker.isCompanionTrustworthy(context)
 
-                            val intent = Intent().apply {
-                                setClassName(uePackageName, ueActivityName)
+                            if (!isTrustworthy) {
+                                Log.e("MB_RT", "Integrity check failed!")
+                                showIntegrityDialog = true
+                                0
+                            } else {
+                                val uePackageName = "com.komarudude.materialbench.rttest"
+                                val ueActivityName = "com.epicgames.unreal.GameActivity"
+                                Log.i("MB_RT", "Starting benchmark activity...")
+
+                                val intent = Intent().apply {
+                                    setClassName(uePackageName, ueActivityName)
+                                }
+
+                                ueLauncher.launch(intent)
+                                val score = resultChannel.receive()
+
+                                Log.i("MB_RT", "Benchmark activity closed. Score: $score")
+                                score * 10
                             }
-                            ueLauncher.launch(intent)
-
-                            val score = resultChannel.receive()
-                            Log.i("MB_RT", "Benchmark activity closed. Score: $score")
-                            score * 10
                         } else {
                             Toast.makeText(context, R.string.device_not_supported, Toast.LENGTH_SHORT).show()
                             Log.w("MB_RT", "Device not support RT test")
@@ -474,6 +488,20 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
         }
 
         Spacer(modifier = Modifier.height(12.dp))
+    }
+
+    if (showIntegrityDialog) {
+        AlertDialog(
+            onDismissRequest = { showIntegrityDialog = false },
+            title = { Text(text = stringResource(id = R.string.integrity_error_title)) },
+            text = { Text(text = stringResource(id = R.string.integrity_error_text)) },
+            icon = { Icon(imageVector = Icons.Default.DeveloperBoardOff, contentDescription = null) },
+            confirmButton = {
+                TextButton(onClick = { showIntegrityDialog = false }) {
+                    Text("ОК")
+                }
+            }
+        )
     }
 }
 
