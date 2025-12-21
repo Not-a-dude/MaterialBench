@@ -2,38 +2,29 @@ package com.komarudude.materialbench.utils
 
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Log
 import com.komarudude.materialbench.BuildConfig
 
 object IntegrityChecker {
-
     private const val COMPANION_PACKAGE = "com.komarudude.materialbench.rttest"
 
     fun isCompanionTrustworthy(context: Context): Boolean {
         return try {
             val pm = context.packageManager
-            val expectedHash = BuildConfig.COMPANION_SHA256 // Берем из твоего build.gradle
+            val expectedHash = BuildConfig.COMPANION_SHA256
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                val packageInfo = pm.getPackageInfo(COMPANION_PACKAGE, PackageManager.GET_SIGNING_CERTIFICATES)
-                val signingInfo = packageInfo.signingInfo
-                val signatures = if (signingInfo.hasMultipleSigners()) {
-                    signingInfo.apkContentsSigners
-                } else {
-                    signingInfo.signingCertificateHistory
-                }
+            val packageInfo = pm.getPackageInfo(COMPANION_PACKAGE, PackageManager.GET_SIGNING_CERTIFICATES)
+            val signingInfo = packageInfo.signingInfo ?: return false
 
-                signatures.any { sig ->
-                    getSha256(sig.toByteArray()) == expectedHash
-                }
+            val signatures = if (signingInfo.hasMultipleSigners()) {
+                signingInfo.apkContentsSigners
             } else {
-                @Suppress("DEPRECATION")
-                val packageInfo = pm.getPackageInfo(COMPANION_PACKAGE, PackageManager.GET_SIGNATURES)
-                packageInfo.signatures.any { sig ->
-                    getSha256(sig.toByteArray()) == expectedHash
-                }
+                signingInfo.signingCertificateHistory
             }
+
+            signatures?.any { sig ->
+                getSha256(sig.toByteArray()) == expectedHash
+            } ?: false
         } catch (e: Exception) {
             Log.e("Integrity", "Companion check failed: ${e.message}")
             false
