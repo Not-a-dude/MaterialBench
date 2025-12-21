@@ -39,7 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -110,6 +110,8 @@ private const val lowTemperatureThreshold = 17.0f
 
 private val MarkerValueFormatter =
     DefaultCartesianMarker.ValueFormatter.default(DecimalFormat("#.## °C"))
+
+private data class StressPoint(val timeSec: Float, val temp: Float)
 
 @Composable
 private fun TemperatureChart(
@@ -251,6 +253,11 @@ fun MainScreen(
 @Composable
 fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+
+    BackHandler(enabled = isStressRunning) {
+        Toast.makeText(context, context.getString(R.string.stress_running), Toast.LENGTH_SHORT).show()
+    }
+
     val pm: PackageManager = context.packageManager
     val hasVulkanCompute = pm.hasSystemFeature("android.hardware.vulkan.compute")
 
@@ -264,12 +271,13 @@ fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
     val stressStartedToast = Toast.makeText(context, R.string.stress_started, Toast.LENGTH_SHORT)
     val stressStoppedToast = Toast.makeText(context, R.string.stress_stopped, Toast.LENGTH_SHORT)
 
-    val items = listOf("CPU", "GPU Compute")
-
+    val items = listOf("CPU", "GPU")
     var selectedIndices by rememberSaveable { mutableStateOf(setOf(0)) }
 
     val modelProducer = remember { CartesianChartModelProducer() }
-    val temperatures = remember { mutableStateListOf<Float>() }
+
+    val points = remember { mutableStateListOf<StressPoint>() }
+    var startTime by remember { mutableLongStateOf(0L) }
 
     val startBatteryTemp = getBatteryTemp(context)
     var batteryTemp by remember { mutableFloatStateOf(startBatteryTemp ?: 0f) }
@@ -278,38 +286,8 @@ fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
     var showLowTempDialog by rememberSaveable { mutableStateOf(false) }
     var triggeredTemp by rememberSaveable { mutableFloatStateOf(0f) }
 
-    // max точек, которые хотим отображать. Можно настроить.
-    val maxPoints = 240
-
-    // Сколько секунд соответствует одной точке по оси X. Начинаем с 1s.
-    var sampleIntervalSec by rememberSaveable { mutableDoubleStateOf(1.0) }
-
-    // Функция сжатия: пока больше maxPoints — объединяем соседние пары в среднее и удваиваем интервал
-    fun compressIfNeeded(list: MutableList<Float>) {
-        while (list.size > maxPoints) {
-            val newList = mutableListOf<Float>()
-            var i = 0
-            while (i < list.size) {
-                if (i + 1 < list.size) {
-                    newList.add((list[i] + list[i + 1]) / 2f)
-                    i += 2
-                } else {
-                    // если нечётное — переносим последний элемент
-                    newList.add(list[i])
-                    i += 1
-                }
-            }
-            list.clear()
-            list.addAll(newList)
-            sampleIntervalSec *= 2.0
-        }
-    }
-
-    // Форматтер нижней оси: axisValue — индекс точки, умножаем на sampleIntervalSec, и форматируем в s/m/h
     val bottomAxisValueFormatter = CartesianValueFormatter { _: CartesianMeasuringContext, axisValue: Double, _ ->
-        val secondsDouble = (axisValue + 1) * sampleIntervalSec
-        val totalSeconds = secondsDouble.toLong().coerceAtLeast(0L)
-
+        val totalSeconds = axisValue.toLong().coerceAtLeast(0L)
         when {
             totalSeconds >= 3600L -> {
                 val h = totalSeconds / 3600L
@@ -327,20 +305,23 @@ fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
 
     LaunchedEffect(isStressRunning) {
         if (isStressRunning) {
-            // Очищаем список температур при старте нового стресс-теста
-            temperatures.clear()
-            sampleIntervalSec = 1.0
+            points.clear()
+            startTime = System.currentTimeMillis()
         }
         while (isStressRunning) {
-            delay(1000L)
             batteryTemp = getBatteryTemp(context) ?: 0f
-            temperatures.add(batteryTemp)
 
-            compressIfNeeded(temperatures)
+            val currentSec = ((System.currentTimeMillis() - startTime) / 1000L).toFloat()
+
+            points.add(StressPoint(currentSec, batteryTemp))
+
 
             modelProducer.runTransaction {
                 lineSeries {
-                    series(temperatures)
+                    series(
+                        x = points.map { it.timeSec },
+                        y = points.map { it.temp }
+                    )
                 }
             }
 
@@ -363,6 +344,7 @@ fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
 
                 return@LaunchedEffect
             }
+            delay(1000L)
         }
     }
 
@@ -398,7 +380,10 @@ fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
                             }
                         },
                         enabled = if (index == 1) hasVulkanCompute else true,
-                        shape = SegmentedButtonDefaults.baseShape,
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = items.size
+                        ),
                         label = {
                             Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
@@ -467,11 +452,9 @@ fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
 
     if (showHighTempDialog) {
         AlertDialog(
-            onDismissRequest = { /* Не позволяем закрывать кликом вне диалога, только через кнопку */ },
+            onDismissRequest = { },
             title = { Text(stringResource(R.string.high_bat_temp_dialog_title)) },
-            text = {
-                Text(stringResource(R.string.high_bat_temp_dialog_msg, triggeredTemp))
-            },
+            text = { Text(stringResource(R.string.high_bat_temp_dialog_msg, triggeredTemp)) },
             confirmButton = {
                 TextButton(onClick = { showHighTempDialog = false }) {
                     Text(stringResource(R.string.ok))
@@ -480,11 +463,9 @@ fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
         )
     } else if (showLowTempDialog) {
         AlertDialog(
-            onDismissRequest = { /* Не позволяем закрывать кликом вне диалога, только через кнопку */ },
+            onDismissRequest = { },
             title = { Text(stringResource(R.string.low_bat_temp_dialog_title)) },
-            text = {
-                Text(stringResource(R.string.low_bat_temp_dialog_msg, triggeredTemp))
-            },
+            text = { Text(stringResource(R.string.low_bat_temp_dialog_msg, triggeredTemp)) },
             confirmButton = {
                 TextButton(onClick = { showLowTempDialog = false }) {
                     Text(stringResource(R.string.ok))
@@ -701,10 +682,6 @@ fun BenchMainScreen() {
                 }
             }
         }
-    }
-
-    BackHandler(enabled = isStressRunning) {
-        Toast.makeText(context, context.getString(R.string.stress_running), Toast.LENGTH_SHORT).show()
     }
 
     NavigationSuiteScaffold(
