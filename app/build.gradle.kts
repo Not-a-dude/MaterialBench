@@ -12,8 +12,8 @@ android {
         applicationId = "com.komarudude.materialbench"
         minSdk = 30
         targetSdk = 36
-        versionCode = 18
-        versionName = "1.2.0-beta5"
+        versionCode = 19
+        versionName = "1.2.0-beta6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
