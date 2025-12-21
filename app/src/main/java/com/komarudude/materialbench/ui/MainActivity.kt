@@ -75,6 +75,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewModelScope
 import android.content.pm.PackageInfo
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.komarudude.materialbench.BenchScores
 import com.komarudude.materialbench.R
 import com.komarudude.materialbench.utils.RetrofitClient
@@ -355,7 +357,9 @@ fun StressScreen(mainActivity: MainActivity, modifier: Modifier = Modifier) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(24.dp)
+            modifier = Modifier
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
         ) {
 
             Text(
@@ -491,7 +495,7 @@ class MainActivity : ComponentActivity() {
             try {
                 System.loadLibrary("materialbench")
             } catch (_: UnsatisfiedLinkError) {
-                // Игнорируем в Preview
+                // Ignoring Preview
             }
         }
     }
@@ -563,7 +567,7 @@ class BenchViewModel : ViewModel() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun BenchMainScreen() {
     val context = LocalContext.current
@@ -722,15 +726,15 @@ fun BenchMainScreen() {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun OverallScoreCard(score: String, percentileRank: String?) {
     val viewModel: BenchViewModel = viewModel()
     val isFetchingRank by viewModel.isFetchingRank
 
-    // Используем ElevatedCard и Large Shape для основного акцента
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large, // 24dp по дефолту из нашей Theme.kt
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         )
@@ -747,12 +751,11 @@ fun OverallScoreCard(score: String, percentileRank: String?) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = score,
-                style = MaterialTheme.typography.displayLarge, // Дефолтный крупный стиль
+                style = MaterialTheme.typography.displayLargeEmphasized,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Кастомный трек прогресса для визуальной чистоты
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -803,10 +806,9 @@ fun OverallScoreCard(score: String, percentileRank: String?) {
 fun BenchmarkCard(benchmark: Benchmark) {
     var isExpanded by remember { mutableStateOf(false) }
 
-    // Используем Card с surfaceContainer для разделения уровней без явных теней
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium, // 16dp
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -820,7 +822,6 @@ fun BenchmarkCard(benchmark: Benchmark) {
                 modifier = Modifier.padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Иконка в скругленном квадрате (Squircle)
                 Box(
                     modifier = Modifier
                         .size(48.dp)
