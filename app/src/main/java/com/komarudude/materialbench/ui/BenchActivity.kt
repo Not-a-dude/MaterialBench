@@ -307,30 +307,22 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
                     }
                     "gpu_rt" -> {
                         if (isSupportVulkanRT) {
-                            val isTrustworthy = IntegrityChecker.isCompanionTrustworthy(context)
-
-                            if (!isTrustworthy) {
-                                Log.e("MB_RT", "Integrity check failed!")
+                            if (!IntegrityChecker.isCompanionTrustworthy(context)) {
                                 showIntegrityDialog = true
                                 0
                             } else {
-                                val uePackageName = "com.komarudude.materialbench.rttest"
-                                val ueActivityName = "com.epicgames.unreal.GameActivity"
                                 Log.i("MB_RT", "Starting benchmark activity...")
-
                                 val intent = Intent().apply {
-                                    setClassName(uePackageName, ueActivityName)
+                                    setClassName("com.komarudude.materialbench.rttest", "com.epicgames.unreal.GameActivity")
                                 }
-
                                 ueLauncher.launch(intent)
-                                val score = resultChannel.receive()
 
+                                val score = resultChannel.receive()
                                 Log.i("MB_RT", "Benchmark activity closed. Score: $score")
                                 score * 10
                             }
                         } else {
                             Toast.makeText(context, R.string.device_not_supported, Toast.LENGTH_SHORT).show()
-                            Log.w("MB_RT", "Device not support RT test")
                             0
                         }
                     }
