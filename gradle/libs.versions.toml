@@ -18,6 +18,9 @@
     vico = "2.2.1"
     appcompat = "1.7.1"
     core-splash-screen = "1.2.0"
+    firebaseCrashlytics = "20.0.4"
+    googleGmsGoogleServices = "4.4.4"
+    googleFirebaseCrashlytics = "3.0.6"
 
 [libraries]
     androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,8 +51,11 @@
     vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
     vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
     androidx-core-splash-screen = { group = "androidx.core", name = "core-splashscreen", version.ref = "core-splash-screen"}
+    firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics", version.ref = "firebaseCrashlytics" }
 
 [plugins]
     android-application = { id = "com.android.application", version.ref = "agp" }
     kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
     kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+    google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
+    google-firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "googleFirebaseCrashlytics" }
