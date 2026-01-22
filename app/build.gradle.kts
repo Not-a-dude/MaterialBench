@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.google.firebase.crashlytics)
 }
 
 android {
@@ -25,9 +27,11 @@ android {
 
         val compVersion = System.getenv("COMPANION_MIN_VERSION") ?: "11"
         val compHash = System.getenv("COMPANION_SHA256") ?: "429f6c1e57e8b9b7474c91d5109fcc5e66f78211c7b2bf14bdf4fb7999c93cbd"
+        val av1EncResHash = System.getenv("AV1ENCRES_HASH") ?: "63a801573f322727e4a5b8ef8bdd40718623cdbc8402126080a66e0fbeec646b"
 
         buildConfigField("long", "COMPANION_MIN_VERSION", "${compVersion}L")
         buildConfigField("String", "COMPANION_SHA256", "\"$compHash\"")
+        buildConfigField("String", "AV1ENCRES_HASH", "\"$av1EncResHash\"")
     }
 
     signingConfigs {
@@ -93,6 +97,7 @@ dependencies {
     implementation(libs.androidx.material3.adaptive.navigation.suite)
     implementation(libs.androidx.core.splash.screen) // На будущее, сейчас я не знаю как реализовать это
     implementation(libs.litert)
+    implementation(libs.firebase.crashlytics)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
