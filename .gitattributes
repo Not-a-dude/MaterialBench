@@ -1,1 +1,2 @@
+media/Launch.mp4 filter=lfs diff=lfs merge=lfs -text
 app/src/main/assets/enwik_128.bin filter=lfs diff=lfs merge=lfs -text
