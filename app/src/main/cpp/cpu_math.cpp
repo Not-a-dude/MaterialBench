@@ -59,6 +59,9 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuMathSingleCoreBen
         JNIEnv* thread_env = nullptr;
         g_vm->AttachCurrentThread(&thread_env, nullptr);
 
+        int big_core = get_biggest_core();
+        pin_to_core(big_core);
+
         if (setpriority(PRIO_PROCESS, 0, 0) != 0) {
             LOGE("Failed to set thread priority");
         }
