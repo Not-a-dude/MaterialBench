@@ -15,7 +15,6 @@ set(SOURCES
         utils.cpp
         cpu_math.cpp
         cpu_crypto.cpp
-        cpu_av1.cpp
         ram.cpp
         rom_random.cpp
         rom_seq.cpp
