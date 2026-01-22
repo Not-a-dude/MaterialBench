@@ -133,7 +133,7 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
         resultChannel.trySend(score)
     }
 
-    val isSupportVulkanRT = activity.hasVulkanRt()
+    val isSupportVulkanRT = remember { activity.hasVulkanRt() }
 
     val overallProgressTitle = stringResource(R.string.overall_progress_title)
     val runningString = stringResource(R.string.running)
