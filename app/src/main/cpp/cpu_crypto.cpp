@@ -47,6 +47,9 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuCryptoSingleCoreB
     update_progress(env, activity, updateProgressMethod, 0.0f);
     auto total_start = std::chrono::high_resolution_clock::now();
 
+    int big_core = get_biggest_core();
+    pin_to_core(big_core);
+
     if (setpriority(PRIO_PROCESS, 0, -10) != 0) {
         LOGE("Failed to set thread priority");
     }
