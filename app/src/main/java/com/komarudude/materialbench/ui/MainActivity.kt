@@ -580,7 +580,6 @@ fun BenchMainScreen() {
     val cpuIconText = stringResource(id = R.string.cpu_icon_text)
     val cpuMathSingleString = stringResource(R.string.cpu_math_single)
     val cpuMathMultiString = stringResource(R.string.cpu_math_multi)
-    val cpuAv1String = stringResource(R.string.cpu_av1)
     val gpuBenchmarkTitle = stringResource(id = R.string.gpu_benchmark_title)
     val gpuBenchmarkDescription = stringResource(id = R.string.gpu_benchmark_description)
     val gpuIconText = stringResource(id = R.string.gpu_icon_text)
@@ -634,7 +633,6 @@ fun BenchMainScreen() {
         SubBenchmark(titleKey = cpuMathMultiString, scoreKey = "cpu_math_multi"),
         SubBenchmark(titleKey = cpuCryptoSingle, scoreKey = "cpu_crypto_single"),
         SubBenchmark(titleKey = cpuCryptoMulti, scoreKey = "cpu_crypto_multi"),
-        SubBenchmark(titleKey = cpuAv1String, scoreKey = "cpu_av1")
     )
     val gpuSubBenchmarks = listOf(
         SubBenchmark(titleKey = gpuVulkanComputeGemm, scoreKey = "gpu_gemm"),
