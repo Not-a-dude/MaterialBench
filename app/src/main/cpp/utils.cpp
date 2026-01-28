@@ -35,6 +35,43 @@ int get_biggest_core() {
     return best_core;
 }
 
+std::vector<int> get_performance_cores() {
+    struct Core {
+        int id;
+        long max_freq;
+    };
+
+    std::vector<Core> cores;
+    long min_max_freq = -1;
+
+    for (int cpu = 0;; cpu++) {
+        std::string path = "/sys/devices/system/cpu/cpu" + std::to_string(cpu) + "/cpufreq/cpuinfo_max_freq";
+        std::ifstream f(path);
+        if (!f.is_open()) break;
+
+        long freq;
+        f >> freq;
+        cores.push_back({cpu, freq});
+
+        if (min_max_freq == -1 || freq < min_max_freq) {
+            min_max_freq = freq;
+        }
+    }
+
+    std::vector<int> result;
+    for (const auto& core : cores) {
+        if (core.max_freq > min_max_freq) {
+            result.push_back(core.id);
+        }
+    }
+
+    if (result.empty()) {
+        for (const auto& core : cores) result.push_back(core.id);
+    }
+
+    return result;
+}
+
 void pin_to_core(int core_id) {
     cpu_set_t set;
     CPU_ZERO(&set);
