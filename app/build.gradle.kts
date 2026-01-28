@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.google.firebase.crashlytics)
@@ -14,8 +13,8 @@ android {
         applicationId = "com.komarudude.materialbench"
         minSdk = 30
         targetSdk = 36
-        versionCode = 19
-        versionName = "1.2.0-beta6"
+        versionCode = 20
+        versionName = "1.2.0-beta7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -57,14 +56,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlin {
-        android {
-            compilerOptions {
-                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-            }
-        }
     }
 
     buildFeatures {
