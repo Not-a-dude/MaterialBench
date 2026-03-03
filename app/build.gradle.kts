@@ -44,6 +44,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                nativeSymbolUploadEnabled = true
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -52,6 +55,9 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                nativeSymbolUploadEnabled = true
+            }
         }
     }
 
