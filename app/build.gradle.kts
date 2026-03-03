@@ -13,8 +13,8 @@ android {
         applicationId = "com.komarudude.materialbench"
         minSdk = 30
         targetSdk = 36
-        versionCode = 20
-        versionName = "1.2.0-beta7"
+        versionCode = 21
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -26,11 +26,9 @@ android {
 
         val compVersion = System.getenv("COMPANION_MIN_VERSION") ?: "11"
         val compHash = System.getenv("COMPANION_SHA256") ?: "429f6c1e57e8b9b7474c91d5109fcc5e66f78211c7b2bf14bdf4fb7999c93cbd"
-        val av1EncResHash = System.getenv("AV1ENCRES_HASH") ?: "63a801573f322727e4a5b8ef8bdd40718623cdbc8402126080a66e0fbeec646b"
 
         buildConfigField("long", "COMPANION_MIN_VERSION", "${compVersion}L")
         buildConfigField("String", "COMPANION_SHA256", "\"$compHash\"")
-        buildConfigField("String", "AV1ENCRES_HASH", "\"$av1EncResHash\"")
     }
 
     signingConfigs {
@@ -44,7 +42,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
