@@ -54,6 +54,7 @@ class BenchActivity : ComponentActivity() {
 
     external fun nativeRunCpuMathSingleCoreBenchmark(activity: BenchActivity): Long
     external fun nativeRunCpuMathMultiCoreBenchmark(activity: BenchActivity): Long
+    external fun nativeRunCpuVectorMathBenchmark(activity: BenchActivity): Long
     external fun nativeRunRamSequentialWriteBenchmark(activity: BenchActivity): Long
     external fun nativeRunRamSequentialReadBenchmark(activity: BenchActivity): Long
     external fun nativeRunRomMixedRandomBenchmark(activity: BenchActivity): Long
@@ -141,6 +142,7 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
     val backToMenuString = stringResource(R.string.back_to_menu)
     val cpuMathSingleString = stringResource(R.string.cpu_math_single)
     val cpuMathMultiString = stringResource(R.string.cpu_math_multi)
+    val cpuVectorMath = stringResource(R.string.cpu_vector_math)
     val ramSeqWrite = stringResource(R.string.ram_seq_write)
     val ramSeqRead = stringResource(R.string.ram_seq_read)
     val romRandOps = stringResource(R.string.rom_rand_ops)
@@ -158,6 +160,7 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
             TestStep("cpu_math_multi", cpuMathMultiString, TestCategory.CPU),
             TestStep("cpu_crypto_single", cpuCryptoSingle, TestCategory.CPU),
             TestStep("cpu_crypto_multi", cpuCryptoMulti, TestCategory.CPU),
+            TestStep("cpu_vector_math", cpuVectorMath, TestCategory.CPU),
 
             // GPU
             TestStep("gpu_gemm", gpuVulkanComputeGemm, TestCategory.GPU),
@@ -262,6 +265,12 @@ fun BenchScreen(modifier: Modifier = Modifier, onBackToMenu: () -> Unit, activit
                     "cpu_crypto_multi" -> {
                         runNativeBenchmark(
                             call = { activity.nativeRunCpuCryptoMultiCoreBenchmark(activity) },
+                            scale = 100_000_000
+                        )
+                    }
+                    "cpu_vector_math" -> {
+                        runNativeBenchmark(
+                            call = { activity.nativeRunCpuVectorMathBenchmark(activity) },
                             scale = 100_000_000
                         )
                     }

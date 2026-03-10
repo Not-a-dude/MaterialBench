@@ -22,8 +22,8 @@
     <string name="material_bench_title" translatable="false">MaterialBench</string>
     <string name="expand">Expand</string>
     <string name="collapse">Collapse</string>
-    <string name="cpu_math_single">CPU — Math (Single core)</string>
-    <string name="cpu_math_multi">CPU — Math (Multi core)</string>
+    <string name="cpu_math_single">CPU — System Math (Single core)</string>
+    <string name="cpu_math_multi">CPU — System Math (Multi core)</string>
     <string name="running">Running:</string>
     <string name="overall_progress_title">Overall progress</string>
     <string name="finished">Finished!</string>
@@ -59,4 +59,5 @@
     <string name="integrity_error_title">Integrity Error</string>
     <string name="integrity_error_text">The graphics test version or signature does not match the requirements for this version of the main app. Please download the correct version. This subtest will be skipped.</string>
     <string name="ok">Got it</string>
+    <string name="cpu_vector_math" translatable="false">CPU — Vector math</string>
 </resources>

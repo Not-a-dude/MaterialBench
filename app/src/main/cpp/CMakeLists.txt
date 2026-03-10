@@ -13,13 +13,16 @@ endif()
 
 set(SOURCES
         utils.cpp
-        cpu_math.cpp
+        cpu_system_math.cpp
+        cpu_vector_math.cpp
         cpu_crypto.cpp
         ram.cpp
         rom_random.cpp
         rom_seq.cpp
         vulkan_compute.cpp
 )
+
+set_source_files_properties(cpu_vector_math.cpp PROPERTIES COMIPLE_FLAGS "-march=armv8-a+simd")
 
 set(SH_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/gemm_shader_tiled.comp")
 set(SH_BINARY "${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv")
