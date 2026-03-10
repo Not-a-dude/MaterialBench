@@ -9,14 +9,14 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.komarudude.materialbench" />
-                  <option name="mobileSdkAppId" value="1:18983148031:android:528b0db896a2f0728cafca" />
+                  <option name="appId" value="com.komarudude.materialbench.debug" />
+                  <option name="mobileSdkAppId" value="1:18983148031:android:aec46489ad42fc568cafca" />
                   <option name="projectId" value="materialbench" />
                   <option name="projectNumber" value="18983148031" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
-              <option name="timeIntervalDays" value="NINETY_DAYS" />
+              <option name="timeIntervalDays" value="THIRTY_DAYS" />
               <option name="visibilityType" value="ALL" />
             </InsightsFilterSettings>
           </value>
