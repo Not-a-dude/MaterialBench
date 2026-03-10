@@ -17,8 +17,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MaterialBench"
-        android:usesCleartextTraffic="true"
-        android:extractNativeLibs="true">
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".ui.BenchActivity"
             android:exported="false"
