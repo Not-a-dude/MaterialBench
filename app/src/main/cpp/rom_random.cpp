@@ -57,8 +57,8 @@ bool create_random_test_file(const std::string& path, size_t size) {
 extern "C" {
 
 JNIEXPORT jlong JNICALL
-Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomMixedRandomBenchmark(
-        JNIEnv* env, jobject /*thiz*/, jobject activity) {
+Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunRomMixedRandomBenchmark(
+        JNIEnv* env, jobject /*thiz*/, jobject callback) {
 
     const size_t file_size = 500ULL * 1024ULL * 1024ULL; // 500 MB
     const int block_size = 64 * 1024; // 64 KB
@@ -67,10 +67,10 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomMixedRandomBenchm
     int big_core = get_biggest_core();
     pin_to_core(big_core);
 
-    jclass activityClass = env->GetObjectClass(activity);
-    jmethodID updateProgressMethod = env->GetMethodID(activityClass, "updateBenchmarkProgress", "(F)V");
+    jclass callbackClass = env->GetObjectClass(callback);
+    jmethodID updateProgressMethod = env->GetMethodID(callbackClass, "onProgressUpdate", "(F)V");
 
-    std::string filePath = get_files_dir_path(env, activity) + "/mb_mixed_rw_test.bin";
+    std::string filePath = get_files_dir_path(env, callback) + "/mb_mixed_rw_test.bin";
 
     // Create file with random data
     if (!create_random_test_file(filePath, file_size)) {
@@ -139,7 +139,7 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomMixedRandomBenchm
 
         if ((i % progress_step) == 0 && i > 0) {
             float progress = static_cast<float>(i) / static_cast<float>(iterations);
-            update_progress(env, activity, updateProgressMethod, progress);
+            update_progress(env, callback, updateProgressMethod, progress);
         }
     }
 
@@ -149,7 +149,7 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomMixedRandomBenchm
     }
 
     asm volatile("" : : "r"(checksum) : "memory");
-    update_progress(env, activity, updateProgressMethod, 1.0f);
+    update_progress(env, callback, updateProgressMethod, 1.0f);
 
     auto end = std::chrono::high_resolution_clock::now();
     long duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();

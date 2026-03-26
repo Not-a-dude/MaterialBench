@@ -79,16 +79,20 @@ void pin_to_core(int core_id) {
     sched_setaffinity(0, sizeof(cpu_set_t), &set);
 }
 
-void update_progress(JNIEnv* env, jobject activity, jmethodID methodId, float progress) {
-    if (env && activity && methodId) {
-        env->CallVoidMethod(activity, methodId, progress);
+void update_progress(JNIEnv* env, jobject callback, jmethodID methodId, float progress) {
+    if (env && callback && methodId) {
+        env->CallVoidMethod(callback, methodId, progress);
     }
 }
 
-std::string get_files_dir_path(JNIEnv* env, jobject activity) {
-    jclass activityClass = env->GetObjectClass(activity);
-    jmethodID getFilesDirMethod = env->GetMethodID(activityClass, "getFilesDir", "()Ljava/io/File;");
-    jobject filesDir = env->CallObjectMethod(activity, getFilesDirMethod);
+std::string get_files_dir_path(JNIEnv* env, jobject context) {
+    // If context is null or doesn't have getFilesDir, this will fail.
+    // Assuming context is an Activity or Context object.
+    jclass contextClass = env->GetObjectClass(context);
+    jmethodID getFilesDirMethod = env->GetMethodID(contextClass, "getFilesDir", "()Ljava/io/File;");
+    if (!getFilesDirMethod) return "";
+
+    jobject filesDir = env->CallObjectMethod(context, getFilesDirMethod);
 
     jclass fileClass = env->FindClass("java/io/File");
     jmethodID getPathMethod = env->GetMethodID(fileClass, "getAbsolutePath", "()Ljava/lang/String;");
@@ -104,7 +108,7 @@ std::string get_files_dir_path(JNIEnv* env, jobject activity) {
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_komarudude_materialbench_ui_BenchActivity_hasVulkanRt(
+Java_com_komarudude_materialbench_data_native_NativeLib_hasVulkanRt(
         JNIEnv *env, jobject thiz) {
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;

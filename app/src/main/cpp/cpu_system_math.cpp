@@ -42,19 +42,19 @@ inline double heavy_math(double i) {
 extern "C" {
 
 JNIEXPORT jlong
-Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuMathSingleCoreBenchmark(
-        JNIEnv *env, jobject _, jobject activity) {
-    if (activity == nullptr) return 0;
-    jobject activity_global_ref = env->NewGlobalRef(activity);
-    jclass activityClass_local = env->GetObjectClass(activity_global_ref);
-    auto activity_class_global_ref = (jclass)env->NewGlobalRef(activityClass_local);
-    env->DeleteLocalRef(activityClass_local);
-    jmethodID updateProgressMethod = env->GetMethodID(activity_class_global_ref, "updateBenchmarkProgress", "(F)V");
+Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuMathSingleCoreBenchmark(
+        JNIEnv *env, jobject _, jobject callback) {
+    if (callback == nullptr) return 0;
+    jobject callback_global_ref = env->NewGlobalRef(callback);
+    jclass callbackClass_local = env->GetObjectClass(callback_global_ref);
+    auto callback_class_global_ref = (jclass)env->NewGlobalRef(callbackClass_local);
+    env->DeleteLocalRef(callbackClass_local);
+    jmethodID updateProgressMethod = env->GetMethodID(callback_class_global_ref, "onProgressUpdate", "(F)V");
 
     const long long total_iterations = 70000000LL;
     current_iterations_done.store(0, std::memory_order_relaxed);
 
-    std::thread reporter_thread([activity_global_ref, updateProgressMethod]() {
+    std::thread reporter_thread([callback_global_ref, updateProgressMethod]() {
         JNIEnv* thread_env = nullptr;
         g_vm->AttachCurrentThread(&thread_env, nullptr);
 
@@ -72,15 +72,15 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuMathSingleCoreBen
             long long done = current_iterations_done.load(std::memory_order_relaxed);
             auto progress = static_cast<float>(static_cast<long double>(done) / total_iters);
 
-            if (thread_env && activity_global_ref && updateProgressMethod) {
-                thread_env->CallVoidMethod(activity_global_ref, updateProgressMethod, progress);
+            if (thread_env && callback_global_ref && updateProgressMethod) {
+                thread_env->CallVoidMethod(callback_global_ref, updateProgressMethod, progress);
             }
 
             std::this_thread::sleep_for(update_interval);
         }
 
-        if (thread_env && activity_global_ref && updateProgressMethod) {
-            thread_env->CallVoidMethod(activity_global_ref, updateProgressMethod, 1.0f);
+        if (thread_env && callback_global_ref && updateProgressMethod) {
+            thread_env->CallVoidMethod(callback_global_ref, updateProgressMethod, 1.0f);
         }
 
         g_vm->DetachCurrentThread();
@@ -109,8 +109,8 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuMathSingleCoreBen
 
     reporter_thread.join();
 
-    env->DeleteGlobalRef(activity_global_ref);
-    env->DeleteGlobalRef(activity_class_global_ref);
+    env->DeleteGlobalRef(callback_global_ref);
+    env->DeleteGlobalRef(callback_class_global_ref);
 
     auto end = std::chrono::high_resolution_clock::now();
     volatile double final_result = result;
@@ -119,10 +119,10 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuMathSingleCoreBen
 }
 
 static jlong run_multicore_benchmark(
-        JNIEnv *env, jobject activity, long long total_iterations) {
+        JNIEnv *env, jobject callback, long long total_iterations) {
 
     if (total_iterations <= 0) return 0;
-    if (activity == nullptr) return 0;
+    if (callback == nullptr) return 0;
 
     std::vector<int> perf_cores = get_performance_cores();
     unsigned int num_threads = perf_cores.size();
@@ -133,11 +133,11 @@ static jlong run_multicore_benchmark(
     std::atomic<int> next_task{0};
     std::atomic<long long> completed_iterations{0};
 
-    jobject activity_global_ref = env->NewGlobalRef(activity);
-    jclass activity_class = env->GetObjectClass(activity_global_ref);
-    auto activity_class_global_ref = (jclass)env->NewGlobalRef(activity_class);
-    env->DeleteLocalRef(activity_class);
-    jmethodID update_progress_method_id = env->GetMethodID(activity_class_global_ref, "updateBenchmarkProgress", "(F)V");
+    jobject callback_global_ref = env->NewGlobalRef(callback);
+    jclass callback_class = env->GetObjectClass(callback_global_ref);
+    auto callback_class_global_ref = (jclass)env->NewGlobalRef(callback_class);
+    env->DeleteLocalRef(callback_class);
+    jmethodID update_progress_method_id = env->GetMethodID(callback_class_global_ref, "onProgressUpdate", "(F)V");
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -149,7 +149,7 @@ static jlong run_multicore_benchmark(
 
     for (unsigned int t = 0; t < num_threads; ++t) {
         int target_core = perf_cores[t];
-        threads.emplace_back([&, target_core, activity_global_ref, update_progress_method_id, total_iterations]() {
+        threads.emplace_back([&, target_core, callback_global_ref, update_progress_method_id, total_iterations]() {
             JNIEnv* thread_env = nullptr;
             if (g_vm->AttachCurrentThread(&thread_env, nullptr) != JNI_OK) {
                 return;
@@ -178,8 +178,8 @@ static jlong run_multicore_benchmark(
                                                                      std::memory_order_relaxed) + (task_end - task_start);
                 auto progress = static_cast<float>(static_cast<long double>(completed) / total_iterations);
 
-                if (thread_env && activity_global_ref && update_progress_method_id) {
-                    thread_env->CallVoidMethod(activity_global_ref, update_progress_method_id, progress);
+                if (thread_env && callback_global_ref && update_progress_method_id) {
+                    thread_env->CallVoidMethod(callback_global_ref, update_progress_method_id, progress);
                 }
             }
 
@@ -194,11 +194,11 @@ static jlong run_multicore_benchmark(
 
     for (auto &th : threads) th.join();
 
-    if (env && activity_global_ref && update_progress_method_id) {
-        env->CallVoidMethod(activity_global_ref, update_progress_method_id, 1.0f);
+    if (env && callback_global_ref && update_progress_method_id) {
+        env->CallVoidMethod(callback_global_ref, update_progress_method_id, 1.0f);
     }
-    env->DeleteGlobalRef(activity_global_ref);
-    env->DeleteGlobalRef(activity_class_global_ref);
+    env->DeleteGlobalRef(callback_global_ref);
+    env->DeleteGlobalRef(callback_class_global_ref);
 
     auto end = std::chrono::high_resolution_clock::now();
     LOGD("System math multicore thread result: %f", sum);
@@ -206,11 +206,11 @@ static jlong run_multicore_benchmark(
 }
 
 JNIEXPORT jlong
-Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuMathMultiCoreBenchmark(
-        JNIEnv *env, jobject thiz, jobject activity) {
+Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuMathMultiCoreBenchmark(
+        JNIEnv *env, jobject thiz, jobject callback) {
     (void)thiz;
     const long long DEFAULT_ITERATIONS = 70000000LL;
-    return run_multicore_benchmark(env, activity, DEFAULT_ITERATIONS);
+    return run_multicore_benchmark(env, callback, DEFAULT_ITERATIONS);
 }
 
 static void cpu_stress_task() {
@@ -225,7 +225,7 @@ static void cpu_stress_task() {
 }
 
 JNIEXPORT void
-Java_com_komarudude_materialbench_ui_MainActivity_nativeStartCpuStress(
+Java_com_komarudude_materialbench_data_native_NativeLib_nativeStartCpuStress(
         JNIEnv *env, jobject thiz) {
     (void)env;
     (void)thiz;
@@ -237,7 +237,7 @@ Java_com_komarudude_materialbench_ui_MainActivity_nativeStartCpuStress(
 }
 
 JNIEXPORT void
-Java_com_komarudude_materialbench_ui_MainActivity_nativeStopCpuStress(
+Java_com_komarudude_materialbench_data_native_NativeLib_nativeStopCpuStress(
         JNIEnv *env, jobject thiz) {
     (void)env;
     (void)thiz;

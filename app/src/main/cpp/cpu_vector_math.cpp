@@ -89,22 +89,22 @@ inline double heavy_vector_math(const double* a, const double* b, const double* 
 extern "C" {
 
 JNIEXPORT jlong JNICALL
-Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuVectorMathBenchmark(
-        JNIEnv *env, jobject thiz, jobject activity) {
+Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuVectorMathBenchmark(
+        JNIEnv *env, jobject thiz, jobject callback) {
     (void)thiz;
-    if (activity == nullptr) return 0;
+    if (callback == nullptr) return 0;
 
-    jobject activity_global_ref = env->NewGlobalRef(activity);
-    jclass activityClass_local = env->GetObjectClass(activity_global_ref);
-    auto activity_class_global_ref = (jclass)env->NewGlobalRef(activityClass_local);
-    env->DeleteLocalRef(activityClass_local);
-    jmethodID updateProgressMethod = env->GetMethodID(activity_class_global_ref, "updateBenchmarkProgress", "(F)V");
+    jobject callback_global_ref = env->NewGlobalRef(callback);
+    jclass callbackClass_local = env->GetObjectClass(callback_global_ref);
+    auto callback_class_global_ref = (jclass)env->NewGlobalRef(callbackClass_local);
+    env->DeleteLocalRef(callbackClass_local);
+    jmethodID updateProgressMethod = env->GetMethodID(callback_class_global_ref, "onProgressUpdate", "(F)V");
 
     const int VECTOR_SIZE = 128; // Large data block to show SVE's VLA benefit
     const long long total_iterations = 14000000LL;
     current_iterations_done_vector.store(0, std::memory_order_relaxed);
 
-    std::thread reporter_thread([activity_global_ref, updateProgressMethod]() {
+    std::thread reporter_thread([callback_global_ref, updateProgressMethod]() {
         JNIEnv* thread_env = nullptr;
         g_vm->AttachCurrentThread(&thread_env, nullptr);
 
@@ -117,15 +117,15 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuVectorMathBenchma
             long long done = current_iterations_done_vector.load(std::memory_order_relaxed);
             auto progress = static_cast<float>(static_cast<double>(done) / total_iterations);
 
-            if (thread_env && activity_global_ref && updateProgressMethod) {
-                thread_env->CallVoidMethod(activity_global_ref, updateProgressMethod, progress);
+            if (thread_env && callback_global_ref && updateProgressMethod) {
+                thread_env->CallVoidMethod(callback_global_ref, updateProgressMethod, progress);
             }
 
             std::this_thread::sleep_for(update_interval);
         }
 
-        if (thread_env && activity_global_ref && updateProgressMethod) {
-            thread_env->CallVoidMethod(activity_global_ref, updateProgressMethod, 1.0f);
+        if (thread_env && callback_global_ref && updateProgressMethod) {
+            thread_env->CallVoidMethod(callback_global_ref, updateProgressMethod, 1.0f);
         }
 
         g_vm->DetachCurrentThread();
@@ -166,8 +166,8 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuVectorMathBenchma
     current_iterations_done_vector.store(total_iterations, std::memory_order_relaxed);
     reporter_thread.join();
 
-    env->DeleteGlobalRef(activity_global_ref);
-    env->DeleteGlobalRef(activity_class_global_ref);
+    env->DeleteGlobalRef(callback_global_ref);
+    env->DeleteGlobalRef(callback_class_global_ref);
 
     auto end = std::chrono::high_resolution_clock::now();
 

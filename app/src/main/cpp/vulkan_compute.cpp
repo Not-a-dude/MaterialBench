@@ -194,7 +194,7 @@ static bool createGEMMBuffersAndDescriptors(GEMMContext &ctx, uint32_t N, uint32
     return true;
 }
 
-static jlong runGEMMCompute(GEMMContext &ctx, uint32_t N_param, uint32_t M_param, uint32_t K_param, JNIEnv* env, jobject activity_global_ref, jmethodID update_progress_method_id) {
+static jlong runGEMMCompute(GEMMContext &ctx, uint32_t N_param, uint32_t M_param, uint32_t K_param, JNIEnv* env, jobject callback_global_ref, jmethodID update_progress_method_id) {
     const uint32_t CHUNK_WG_X = 32;
     const uint32_t CHUNK_WG_Y = 32;
     VkCommandBufferAllocateInfo allocInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
@@ -244,9 +244,9 @@ static jlong runGEMMCompute(GEMMContext &ctx, uint32_t N_param, uint32_t M_param
             vkQueueWaitIdle(ctx.shared->computeQueue);
 
             ++batchIndex;
-            if (activity_global_ref && update_progress_method_id) {
+            if (callback_global_ref && update_progress_method_id) {
                 float progress = float(batchIndex) / float(totalBatches);
-                env->CallVoidMethod(activity_global_ref, update_progress_method_id, progress);
+                env->CallVoidMethod(callback_global_ref, update_progress_method_id, progress);
                 if (env->ExceptionCheck()) { env->ExceptionClear(); LOGE("Exception during GEMM progress callback"); }
             }
         }
@@ -353,14 +353,14 @@ static void gpu_stress_task() {
 
 extern "C" {
 
-JNIEXPORT void JNICALL Java_com_komarudude_materialbench_ui_MainActivity_nativeStopGpuStress(JNIEnv *env, jobject thiz) {
+JNIEXPORT void JNICALL Java_com_komarudude_materialbench_data_native_NativeLib_nativeStopGpuStress(JNIEnv *env, jobject thiz) {
     if (!g_stressThreadRunning.load(std::memory_order_relaxed)) return;
     stop_gpu_stress.store(true, std::memory_order_relaxed);
     std::lock_guard<std::mutex> lock(g_stressMutex);
     if (g_stressThread.joinable()) { g_stressThread.join(); LOGI("GPU stress stopped"); }
 }
 
-JNIEXPORT void JNICALL Java_com_komarudude_materialbench_ui_MainActivity_nativeStartGpuStress(JNIEnv *env, jobject thiz) {
+JNIEXPORT void JNICALL Java_com_komarudude_materialbench_data_native_NativeLib_nativeStartGpuStress(JNIEnv *env, jobject thiz) {
     if (g_stressThreadRunning.load(std::memory_order_relaxed)) return;
     stop_gpu_stress.store(false, std::memory_order_relaxed);
     std::lock_guard<std::mutex> lock(g_stressMutex);
@@ -368,26 +368,26 @@ JNIEXPORT void JNICALL Java_com_komarudude_materialbench_ui_MainActivity_nativeS
     g_stressThread = std::thread(gpu_stress_task);
 }
 
-JNIEXPORT void JNICALL Java_com_komarudude_materialbench_ui_MainActivity_nativeCleanup(JNIEnv *env, jobject thiz) {
-    Java_com_komarudude_materialbench_ui_MainActivity_nativeStopGpuStress(env, thiz);
+JNIEXPORT void JNICALL Java_com_komarudude_materialbench_data_native_NativeLib_nativeCleanup(JNIEnv *env, jobject thiz) {
+    Java_com_komarudude_materialbench_data_native_NativeLib_nativeStopGpuStress(env, thiz);
     std::lock_guard<std::mutex> lock(g_initMutex);
     if (g_sharedContext) { cleanupSharedVulkanContext(*g_sharedContext); g_sharedContext.reset(); }
 }
 
-JNIEXPORT void JNICALL Java_com_komarudude_materialbench_ui_BenchActivity_nativeBenchCleanup(JNIEnv *env, jobject thiz) {
-    Java_com_komarudude_materialbench_ui_MainActivity_nativeStopGpuStress(env, thiz);
+JNIEXPORT void JNICALL Java_com_komarudude_materialbench_data_native_NativeLib_nativeBenchCleanup(JNIEnv *env, jobject thiz) {
+    Java_com_komarudude_materialbench_data_native_NativeLib_nativeStopGpuStress(env, thiz);
     std::lock_guard<std::mutex> lock(g_initMutex);
     if (g_sharedContext) { cleanupSharedVulkanContext(*g_sharedContext); g_sharedContext.reset(); }
 }
 
-JNIEXPORT jlong JNICALL Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunVulkanGEMMBenchmark(JNIEnv *env, jobject thiz, jobject activity_param) {
+JNIEXPORT jlong JNICALL Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunVulkanGEMMBenchmark(JNIEnv *env, jobject thiz, jobject callback_param) {
     std::lock_guard<std::mutex> lock(g_initMutex);
     SharedVulkanContext* shared = getSharedContext();
     if (!shared) { LOGE("No shared context"); return -1; }
-    jobject activity_global_ref = env->NewGlobalRef(activity_param);
-    jclass activity_class = env->GetObjectClass(activity_global_ref);
+    jobject callback_global_ref = env->NewGlobalRef(callback_param);
+    jclass callback_class = env->GetObjectClass(callback_global_ref);
     jmethodID update_progress_method_id = nullptr;
-    if (activity_class) update_progress_method_id = env->GetMethodID(activity_class, "updateBenchmarkProgress", "(F)V");
+    if (callback_class) update_progress_method_id = env->GetMethodID(callback_class, "onProgressUpdate", "(F)V");
     GEMMContext ctx;
     ctx.shared = shared;
     uint32_t N = 8192, M = 8192, K = 5120;
@@ -396,12 +396,12 @@ JNIEXPORT jlong JNICALL Java_com_komarudude_materialbench_ui_BenchActivity_nativ
     ctx.workgroupCountY = (N + TILE_DIM - 1) / TILE_DIM;
     if (!createGEMMPipeline(ctx) || !createGEMMBuffersAndDescriptors(ctx, N, M, K)) {
         cleanupGEMM(ctx);
-        env->DeleteGlobalRef(activity_global_ref);
+        env->DeleteGlobalRef(callback_global_ref);
         return -1;
     }
-    jlong duration = runGEMMCompute(ctx, N, M, K, env, activity_global_ref, update_progress_method_id);
+    jlong duration = runGEMMCompute(ctx, N, M, K, env, callback_global_ref, update_progress_method_id);
     cleanupGEMM(ctx);
-    env->DeleteGlobalRef(activity_global_ref);
+    env->DeleteGlobalRef(callback_global_ref);
     return duration;
 }
 

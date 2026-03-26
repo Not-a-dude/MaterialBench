@@ -7,7 +7,7 @@ object BenchScores {
 
     fun saveScore(context: Context, category: String, score: Int) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putInt(category, score).commit()
+        prefs.edit().putInt(category, score).apply()
     }
 
     fun getScore(context: Context, category: String): Int {

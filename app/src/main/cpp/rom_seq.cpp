@@ -35,8 +35,8 @@ bool create_test_file(const std::string& path, size_t size) {
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomSequentialWriteBenchmark(
-        JNIEnv* env, jobject /*thiz*/, jobject activity) {
+Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunRomSequentialWriteBenchmark(
+        JNIEnv* env, jobject /*thiz*/, jobject callback) {
 
     const size_t file_size = 500 * 1024 * 1024; // 500 MB
     const int block_size = 4 * 1024 * 1024; // 4 MB
@@ -44,10 +44,10 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomSequentialWriteBe
     int big_core = get_biggest_core();
     pin_to_core(big_core);
 
-    jclass activityClass = env->GetObjectClass(activity);
-    jmethodID updateProgressMethod = env->GetMethodID(activityClass, "updateBenchmarkProgress", "(F)V");
+    jclass callbackClass = env->GetObjectClass(callback);
+    jmethodID updateProgressMethod = env->GetMethodID(callbackClass, "onProgressUpdate", "(F)V");
 
-    std::string filePath = get_files_dir_path(env, activity) + "/mb_seq_write_test.bin";
+    std::string filePath = get_files_dir_path(env, callback) + "/mb_seq_write_test.bin";
 
     std::ofstream pre_alloc_file(filePath, std::ios::binary | std::ios::trunc);
     if (!pre_alloc_file) {
@@ -88,13 +88,13 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomSequentialWriteBe
 
         if (i % progress_step == 0 && i > 0) {
             float progress = static_cast<float>(i) / iterations;
-            update_progress(env, activity, updateProgressMethod, progress);
+            update_progress(env, callback, updateProgressMethod, progress);
         }
     }
 
     fdatasync(fd);
     asm volatile("" : : : "memory");
-    update_progress(env, activity, updateProgressMethod, 1.0f);
+    update_progress(env, callback, updateProgressMethod, 1.0f);
     auto end = std::chrono::high_resolution_clock::now();
 
     remove(filePath.c_str());
@@ -102,8 +102,8 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomSequentialWriteBe
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomSequentialReadBenchmark(
-        JNIEnv* env, jobject /*thiz*/, jobject activity) {
+Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunRomSequentialReadBenchmark(
+        JNIEnv* env, jobject /*thiz*/, jobject callback) {
 
     const size_t file_size = 500 * 1024 * 1024; // 500 MB
     const int block_size = 4 * 1024 * 1024; // 4 MB
@@ -111,10 +111,10 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomSequentialReadBen
     int big_core = get_biggest_core();
     pin_to_core(big_core);
 
-    jclass activityClass = env->GetObjectClass(activity);
-    jmethodID updateProgressMethod = env->GetMethodID(activityClass, "updateBenchmarkProgress", "(F)V");
+    jclass callbackClass = env->GetObjectClass(callback);
+    jmethodID updateProgressMethod = env->GetMethodID(callbackClass, "onProgressUpdate", "(F)V");
 
-    std::string filePath = get_files_dir_path(env, activity) + "/mb_seq_read_test.bin";
+    std::string filePath = get_files_dir_path(env, callback) + "/mb_seq_read_test.bin";
 
     if (!create_test_file(filePath, file_size)) {
         return -1;
@@ -172,7 +172,7 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomSequentialReadBen
 
         if (i % progress_step == 0 && i > 0) {
             float progress = static_cast<float>(i) / iterations;
-            update_progress(env, activity, updateProgressMethod, progress);
+            update_progress(env, callback, updateProgressMethod, progress);
         }
     }
 
@@ -184,7 +184,7 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunRomSequentialReadBen
         LOGI("Checksum is zero - this should never happen");
     }
 
-    update_progress(env, activity, updateProgressMethod, 1.0f);
+    update_progress(env, callback, updateProgressMethod, 1.0f);
     auto end = std::chrono::high_resolution_clock::now();
     long duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 

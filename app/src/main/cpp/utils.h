@@ -8,8 +8,8 @@ extern JavaVM* g_vm;
 int get_biggest_core();
 std::vector<int> get_performance_cores();
 void pin_to_core(int core_id);
-void update_progress(JNIEnv* env, jobject activity, jmethodID methodId, float progress);
-std::string get_files_dir_path(JNIEnv* env, jobject activity);
+void update_progress(JNIEnv* env, jobject callback, jmethodID methodId, float progress);
+std::string get_files_dir_path(JNIEnv* env, jobject context);
 
 #ifndef LOG_UTILS_H
 #define LOG_UTILS_H

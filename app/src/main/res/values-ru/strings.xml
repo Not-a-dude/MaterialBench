@@ -36,6 +36,7 @@
     <string name="stress_started">Стресс тест запущен!</string>
     <string name="stress_stopped">Стресс тест остановлен!</string>
     <string name="stress_running">Стресс тест запущен, остановите для переключения между вкладками</string>
+    <string name="bench_running">Бенчмарк сейчас запущен, пожалуйста подождите</string>
     <string name="stress_stop">Остановить тест</string>
     <string name="high_bat_temp_dialog_title">Внимание: высокая температура</string>
     <string name="high_bat_temp_dialog_msg">Температура устройства (%1$.1f°C) слишком высокая. Продолжение стресс-теста может привести к перегреву и повреждению устройства.</string>
