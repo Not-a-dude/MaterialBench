@@ -22,7 +22,7 @@ void get_ctr_iv_for_block(const unsigned char* base_iv, long long block_index, u
 extern "C" {
 
 JNIEXPORT jlong JNICALL
-Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuCryptoSingleCoreBenchmark(JNIEnv *env, jobject /*thiz*/, jobject activity) {
+Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuCryptoSingleCoreBenchmark(JNIEnv *env, jobject /*thiz*/, jobject callback) {
     const int SIZE = 256 * 1024 * 1024;
     const int ITERATIONS = 200;
 
@@ -41,10 +41,10 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuCryptoSingleCoreB
     unsigned char key[32]; memset(key, 0x11, sizeof(key));
     unsigned char iv[16];  memset(iv, 0x22, sizeof(iv));
 
-    jclass activityClass = env->GetObjectClass(activity);
-    jmethodID updateProgressMethod = env->GetMethodID(activityClass, "updateBenchmarkProgress", "(F)V");
+    jclass callbackClass = env->GetObjectClass(callback);
+    jmethodID updateProgressMethod = env->GetMethodID(callbackClass, "onProgressUpdate", "(F)V");
 
-    update_progress(env, activity, updateProgressMethod, 0.0f);
+    update_progress(env, callback, updateProgressMethod, 0.0f);
     auto total_start = std::chrono::high_resolution_clock::now();
 
     int big_core = get_biggest_core();
@@ -65,7 +65,7 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuCryptoSingleCoreB
         if (1 != EVP_EncryptFinal_ex(ctx_enc, data_encrypted + encrypted_len, &tmplen)) { return -5; }
         EVP_CIPHER_CTX_free(ctx_enc);
 
-        update_progress(env, activity, updateProgressMethod, (float)(i * 2 + 1) / (ITERATIONS * 2));
+        update_progress(env, callback, updateProgressMethod, (float)(i * 2 + 1) / (ITERATIONS * 2));
 
         // Decrypt
         EVP_CIPHER_CTX *ctx_dec = EVP_CIPHER_CTX_new();
@@ -77,7 +77,7 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuCryptoSingleCoreB
         if (1 != EVP_DecryptFinal_ex(ctx_dec, data_decrypted + decrypted_len, &tmplen2)) { return -9; }
         EVP_CIPHER_CTX_free(ctx_dec);
 
-        update_progress(env, activity, updateProgressMethod, (float)(i * 2 + 2) / (ITERATIONS * 2));
+        update_progress(env, callback, updateProgressMethod, (float)(i * 2 + 2) / (ITERATIONS * 2));
     }
 
     if (memcmp(data_in, data_decrypted, SIZE) != 0) {
@@ -87,7 +87,7 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuCryptoSingleCoreB
     }
 
     auto total_end = std::chrono::high_resolution_clock::now();
-    update_progress(env, activity, updateProgressMethod, 1.0f);
+    update_progress(env, callback, updateProgressMethod, 1.0f);
 
     long long duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(total_end - total_start).count();
     
@@ -97,8 +97,8 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuCryptoSingleCoreB
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuCryptoMultiCoreBenchmark(
-        JNIEnv *env, jobject thiz, jobject activity) {
+Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuCryptoMultiCoreBenchmark(
+        JNIEnv *env, jobject thiz, jobject callback) {
 
     const int SIZE = 256 * 1024 * 1024;
     const int TOTAL_ITERATIONS = 200;
@@ -111,9 +111,9 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuCryptoMultiCoreBe
     if (!data_in) return -1;
     for (size_t i = 0; i < SIZE; i++) data_in[i] = (unsigned char)(i & 0xFF);
 
-    jobject activity_global_ref = env->NewGlobalRef(activity);
-    jclass activity_class = env->GetObjectClass(activity_global_ref);
-    jmethodID update_progress_method_id = env->GetMethodID(activity_class, "updateBenchmarkProgress", "(F)V");
+    jobject callback_global_ref = env->NewGlobalRef(callback);
+    jclass callback_class = env->GetObjectClass(callback_global_ref);
+    jmethodID update_progress_method_id = env->GetMethodID(callback_class, "onProgressUpdate", "(F)V");
 
     std::atomic<int> next_iteration{0};
     std::atomic<int> progress_counter{0};
@@ -169,7 +169,7 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuCryptoMultiCoreBe
                     // Progress
                     int p = progress_counter.fetch_add(2) + 2;
                     if (iter % 5 == 0) {
-                        thread_env->CallVoidMethod(activity_global_ref, update_progress_method_id, (float)p / (TOTAL_ITERATIONS * 2));
+                        thread_env->CallVoidMethod(callback_global_ref, update_progress_method_id, (float)p / (TOTAL_ITERATIONS * 2));
                     }
                 }
             }
@@ -184,7 +184,7 @@ Java_com_komarudude_materialbench_ui_BenchActivity_nativeRunCpuCryptoMultiCoreBe
     for (auto &th : threads) th.join();
 
     free(data_in);
-    env->DeleteGlobalRef(activity_global_ref);
+    env->DeleteGlobalRef(callback_global_ref);
 
     if (error_flag) return -11;
 

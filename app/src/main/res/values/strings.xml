@@ -44,6 +44,7 @@
     <string name="stress_started">Stress test started!</string>
     <string name="stress_stopped">Stress test stopped!</string>
     <string name="stress_running">Stress test started, stop to switch between tabs</string>
+    <string name="bench_running">Benchmark is running, please wait</string>
     <string name="stress_stop">Stop test</string>
     <string name="high_bat_temp_dialog_title">Warning: high temperature</string>
     <string name="high_bat_temp_dialog_msg">The device temperature (%1$.1f°C) is too high. Continuing the stress test may cause overheating and potential damage to your device.</string>
