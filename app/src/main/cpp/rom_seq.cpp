@@ -36,7 +36,7 @@ bool create_test_file(const std::string& path, size_t size) {
 
 JNIEXPORT jlong JNICALL
 Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunRomSequentialWriteBenchmark(
-        JNIEnv* env, jobject /*thiz*/, jobject callback) {
+        JNIEnv* env, jobject /*thiz*/, jstring filesDir, jobject callback) {
 
     const size_t file_size = 500 * 1024 * 1024; // 500 MB
     const int block_size = 4 * 1024 * 1024; // 4 MB
@@ -47,7 +47,9 @@ Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunRomSequentialWr
     jclass callbackClass = env->GetObjectClass(callback);
     jmethodID updateProgressMethod = env->GetMethodID(callbackClass, "onProgressUpdate", "(F)V");
 
-    std::string filePath = get_files_dir_path(env, callback) + "/mb_seq_write_test.bin";
+    const char* filesDirChars = env->GetStringUTFChars(filesDir, nullptr);
+    std::string filePath = std::string(filesDirChars) + "/mb_seq_write_test.bin";
+    env->ReleaseStringUTFChars(filesDir, filesDirChars);
 
     std::ofstream pre_alloc_file(filePath, std::ios::binary | std::ios::trunc);
     if (!pre_alloc_file) {
@@ -103,7 +105,7 @@ Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunRomSequentialWr
 
 JNIEXPORT jlong JNICALL
 Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunRomSequentialReadBenchmark(
-        JNIEnv* env, jobject /*thiz*/, jobject callback) {
+        JNIEnv* env, jobject /*thiz*/, jstring filesDir, jobject callback) {
 
     const size_t file_size = 500 * 1024 * 1024; // 500 MB
     const int block_size = 4 * 1024 * 1024; // 4 MB
@@ -114,7 +116,9 @@ Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunRomSequentialRe
     jclass callbackClass = env->GetObjectClass(callback);
     jmethodID updateProgressMethod = env->GetMethodID(callbackClass, "onProgressUpdate", "(F)V");
 
-    std::string filePath = get_files_dir_path(env, callback) + "/mb_seq_read_test.bin";
+    const char* filesDirChars = env->GetStringUTFChars(filesDir, nullptr);
+    std::string filePath = std::string(filesDirChars) + "/mb_seq_read_test.bin";
+    env->ReleaseStringUTFChars(filesDir, filesDirChars);
 
     if (!create_test_file(filePath, file_size)) {
         return -1;

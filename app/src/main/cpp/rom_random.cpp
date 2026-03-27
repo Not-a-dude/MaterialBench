@@ -58,7 +58,7 @@ extern "C" {
 
 JNIEXPORT jlong JNICALL
 Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunRomMixedRandomBenchmark(
-        JNIEnv* env, jobject /*thiz*/, jobject callback) {
+        JNIEnv* env, jobject /*thiz*/, jstring filesDir, jobject callback) {
 
     const size_t file_size = 500ULL * 1024ULL * 1024ULL; // 500 MB
     const int block_size = 64 * 1024; // 64 KB
@@ -70,7 +70,9 @@ Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunRomMixedRandomB
     jclass callbackClass = env->GetObjectClass(callback);
     jmethodID updateProgressMethod = env->GetMethodID(callbackClass, "onProgressUpdate", "(F)V");
 
-    std::string filePath = get_files_dir_path(env, callback) + "/mb_mixed_rw_test.bin";
+    const char* filesDirChars = env->GetStringUTFChars(filesDir, nullptr);
+    std::string filePath = std::string(filesDirChars) + "/mb_mixed_rw_test.bin";
+    env->ReleaseStringUTFChars(filesDir, filesDirChars);
 
     // Create file with random data
     if (!create_random_test_file(filePath, file_size)) {
