@@ -22,7 +22,8 @@ set(SOURCES
         vulkan_compute.cpp
 )
 
-set_source_files_properties(cpu_vector_math.cpp PROPERTIES COMIPLE_FLAGS "-march=armv8-a+simd")
+set_source_files_properties(cpu_crypto.cpp PROPERTIES COMPILE_FLAGS "-march=armv8-a+simd")
+set_source_files_properties(cpu_vector_math.cpp PROPERTIES COMPILE_FLAGS "-march=armv8-a+simd")
 
 set(SH_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/gemm_shader_tiled.comp")
 set(SH_BINARY "${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv")
