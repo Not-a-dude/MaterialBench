@@ -21,9 +21,9 @@ object NativeLib {
     external fun nativeRunCpuVectorMathBenchmark(callback: BenchmarkProgressCallback): Long
     external fun nativeRunRamSequentialWriteBenchmark(callback: BenchmarkProgressCallback): Long
     external fun nativeRunRamSequentialReadBenchmark(callback: BenchmarkProgressCallback): Long
-    external fun nativeRunRomMixedRandomBenchmark(callback: BenchmarkProgressCallback): Long
-    external fun nativeRunRomSequentialWriteBenchmark(callback: BenchmarkProgressCallback): Long
-    external fun nativeRunRomSequentialReadBenchmark(callback: BenchmarkProgressCallback): Long
+    external fun nativeRunRomMixedRandomBenchmark(filesDir: String, callback: BenchmarkProgressCallback): Long
+    external fun nativeRunRomSequentialWriteBenchmark(filesDir: String, callback: BenchmarkProgressCallback): Long
+    external fun nativeRunRomSequentialReadBenchmark(filesDir: String, callback: BenchmarkProgressCallback): Long
     external fun nativeRunCpuCryptoSingleCoreBenchmark(callback: BenchmarkProgressCallback): Long
     external fun nativeRunCpuCryptoMultiCoreBenchmark(callback: BenchmarkProgressCallback): Long
     external fun nativeRunVulkanGEMMBenchmark(callback: BenchmarkProgressCallback): Long

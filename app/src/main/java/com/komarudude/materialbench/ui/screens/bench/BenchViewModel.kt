@@ -104,6 +104,8 @@ class BenchViewModel(
                 }
             }
 
+            val filesDir = app.filesDir.absolutePath
+
             for (i in testSteps.indices) {
                 currentStepIndex = i
                 val step = testSteps[i]
@@ -139,15 +141,15 @@ class BenchViewModel(
                     }, 10_000_000)
 
                     "rom_rand_ops" -> runNativeBenchmark({
-                        NativeLib.nativeRunRomMixedRandomBenchmark(callback)
+                        NativeLib.nativeRunRomMixedRandomBenchmark(filesDir, callback)
                     }, 10_000_000)
 
                     "rom_seq_write" -> runNativeBenchmark({
-                        NativeLib.nativeRunRomSequentialWriteBenchmark(callback)
+                        NativeLib.nativeRunRomSequentialWriteBenchmark(filesDir, callback)
                     }, 10_000_000)
 
                     "rom_seq_read" -> runNativeBenchmark({
-                        NativeLib.nativeRunRomSequentialReadBenchmark(callback)
+                        NativeLib.nativeRunRomSequentialReadBenchmark(filesDir, callback)
                     }, 10_000_000)
 
                     "gpu_gemm" -> {
