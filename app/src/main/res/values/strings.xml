@@ -35,7 +35,8 @@
     <string name="rom_seq_read">ROM — Sequential read</string>
     <string name="cpu_crypto_single">CPU — Crypto (Single core)</string>
     <string name="cpu_crypto_multi">CPU — Crypto (Multi core)</string>
-    <string name="ai_litert">AI — LiteRT Gpu</string>
+    <string name="ai_litert_cpu">AI — LiteRT Cpu</string>
+    <string name="ai_litert_gpu">AI — LiteRT Cpu</string>
     <string name="main_title">Main</string>
     <string name="stress_title">Stress test</string>
     <string name="vulkan_compute_unsupported">Vulkan Compute is not supported on your device</string>
