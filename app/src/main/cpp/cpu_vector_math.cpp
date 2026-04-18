@@ -14,68 +14,159 @@
 std::atomic<long long> current_iterations_done_vector(0);
 
 __attribute__((target("sve2")))
-double run_sve2(const double* a, const double* b, const double* c, const double* d, uint64_t n) {
-    svfloat64_t sum_v = svdup_f64(0.0);
+float run_sve2(const float* a, const float* b, const float* c, const float* d, uint64_t n) {
+    svfloat32_t sum_v = svdup_f32(0.0f);
+    const svfloat32_t v_threshold = svdup_f32(1.1f);
+    const svfloat32_t v_zero = svdup_f32(0.0f);
 
-    for (uint64_t i = 0; i < n; i += svcntd()) {
-        svbool_t pg = svwhilelt_b64(i, n);
+    for (uint64_t i = 0; i < n; i += svcntw()) {
+        svbool_t pg = svwhilelt_b32(i, n);
 
-        svfloat64_t va = svld1_f64(pg, &a[i]);
-        svfloat64_t vb = svld1_f64(pg, &b[i]);
-        svfloat64_t vc = svld1_f64(pg, &c[i]);
-        svfloat64_t vd = svld1_f64(pg, &d[i]);
+        svfloat32_t va = svld1_f32(pg, &a[i]);
+        svfloat32_t vb = svld1_f32(pg, &b[i]);
+        svfloat32_t vc = svld1_f32(pg, &c[i]);
+        svfloat32_t vd = svld1_f32(pg, &d[i]);
 
-        svfloat64_t res = svmla_f64_z(pg, vc, va, vb);
-        res = svdiv_f64_z(pg, svsqrt_f64_z(pg, res), svadd_f64_z(pg, vd, svdup_f64(1.1)));
+        svuint32_t v_idx = svcvt_u32_f32_z(pg, svabs_f32_z(pg, vb));
+        v_idx = svand_n_u32_z(pg, v_idx, 0x7F);
 
-        res = svmla_f64_z(pg, vb, va, res);
-        res = svdiv_f64_z(pg, svsqrt_f64_z(pg, res), svadd_f64_z(pg, vc, svdup_f64(2.2)));
+        svfloat32_t v_gathered = svld1_gather_u32index_f32(pg, a, v_idx);
 
-        svbool_t pos_mask = svcmpgt_f64(pg, res, svdup_f64(0.0));
-        sum_v = svadd_f64_m(pos_mask, sum_v, res);
+        svfloat32_t res1 = svmla_f32_z(pg, vc, va, vb);
+
+        svuint32_t bits      = svreinterpret_u32_f32(svabs_f32_z(pg, res1));
+        svuint32_t exp_field = svlsr_n_u32_z(pg, bits, 23);
+        svuint32_t mant      = svand_n_u32_z(pg, bits, 0x7FFFFF);
+
+        svbool_t is_zero   = svcmpeq_n_u32(pg, bits, 0);
+        svbool_t is_normal = svcmpne_n_u32(pg, exp_field, 0);
+
+        svint32_t exp_norm = svsub_s32_z(pg, svreinterpret_s32_u32(exp_field), svdup_s32(127));
+        svint32_t clz_mant = svreinterpret_s32_u32(svclz_u32_z(pg, mant));
+        svint32_t exp_sub  = svsub_s32_z(pg, svdup_s32(-118), clz_mant);
+
+        svint32_t exp_bucket = svsel_s32(
+                is_zero, svdup_s32(-1),
+                svsel_s32(is_normal, exp_norm, exp_sub)
+        );
+
+        svint32_t vi_res = svcvt_s32_f32_z(pg, res1);
+        svint32_t vi_vd  = svcvt_s32_f32_z(pg, vd);
+        svint32_t vi_sat = svqadd_s32(vi_res, vi_vd);
+        svfloat32_t v_sat = svcvt_f32_s32_z(pg, vi_sat);
+
+        svbool_t mask1 = svcmpgt_f32(pg, v_gathered, v_threshold);
+        svbool_t mask2 = svcmpne_n_s32(pg, exp_bucket, 0);
+        svbool_t final_mask = svand_b_z(pg, mask1, mask2);
+
+        svfloat32_t res2 = svsel_f32(final_mask, v_sat, svsub_f32_z(pg, res1, v_gathered));
+        svfloat32_t res3 = svmla_f32_z(pg, res2, vd, va);
+        svfloat32_t final_res = svmax_f32_z(pg, res3, v_zero);
+
+        sum_v = svadd_f32_m(pg, sum_v, final_res);
     }
 
-    return svaddv_f64(svptrue_b64(), sum_v);
+    return svaddv_f32(svptrue_b32(), sum_v);
 }
 
-double run_neon(const double* a, const double* b, const double* c, const double* d, int n) {
-    float64x2_t sum_v = vdupq_n_f64(0.0);
+float run_neon(const float* a, const float* b, const float* c, const float* d, int n) {
+    float32x4_t sum_v = vdupq_n_f32(0.0f);
+    const float32x4_t v_threshold = vdupq_n_f32(1.1f);
+    const float32x4_t v_zero = vdupq_n_f32(0.0f);
+
     int i = 0;
+    for (; i <= n - 4; i += 4) {
+        float32x4_t va = vld1q_f32(&a[i]);
+        float32x4_t vb = vld1q_f32(&b[i]);
+        float32x4_t vc = vld1q_f32(&c[i]);
+        float32x4_t vd = vld1q_f32(&d[i]);
 
-    for (; i <= n - 2; i += 2) {
-        float64x2_t va = vld1q_f64(&a[i]);
-        float64x2_t vb = vld1q_f64(&b[i]);
-        float64x2_t vc = vld1q_f64(&c[i]);
-        float64x2_t vd = vld1q_f64(&d[i]);
+        uint32_t idx[4];
+        vst1q_u32(idx, vreinterpretq_u32_f32(vabsq_f32(vb)));
 
-        float64x2_t res = vfmaq_f64(vc, va, vb);
-        res = vdivq_f64(vsqrtq_f64(res), vaddq_f64(vd, vdupq_n_f64(1.1)));
+        float g_vals[4];
+        g_vals[0] = a[idx[0] & 0x7F];
+        g_vals[1] = a[idx[1] & 0x7F];
+        g_vals[2] = a[idx[2] & 0x7F];
+        g_vals[3] = a[idx[3] & 0x7F];
 
-        res = vfmaq_f64(vb, va, res);
-        res = vdivq_f64(vsqrtq_f64(res), vaddq_f64(vc, vdupq_n_f64(2.2)));
+        float32x4_t v_gathered = vld1q_f32(g_vals);
 
-        uint64x2_t pos_mask = vcgtq_f64(res, vdupq_n_f64(0.0));
-        float64x2_t filtered_res = vbslq_f64(pos_mask, res, vdupq_n_f64(0.0));
-        sum_v = vaddq_f64(sum_v, filtered_res);
+        float32x4_t res1 = vfmaq_f32(vc, va, vb);
+
+        uint32x4_t bits      = vreinterpretq_u32_f32(vabsq_f32(res1));
+        uint32x4_t exp_field = vshrq_n_u32(bits, 23);
+        uint32x4_t mant      = vandq_u32(bits, vdupq_n_u32(0x7FFFFF));
+
+        uint32x4_t is_zero   = vceqq_u32(bits, vdupq_n_u32(0));
+        uint32x4_t is_normal = vcgtq_u32(exp_field, vdupq_n_u32(0));
+
+        int32x4_t exp_norm = vsubq_s32(vreinterpretq_s32_u32(exp_field), vdupq_n_s32(127));
+        int32x4_t clz_mant = vreinterpretq_s32_u32(vclzq_u32(mant));
+        int32x4_t exp_sub  = vsubq_s32(vdupq_n_s32(-118), clz_mant);
+
+        int32x4_t exp_bucket = vbslq_s32(
+                is_zero, vdupq_n_s32(-1),
+                vbslq_s32(is_normal, exp_norm, exp_sub)
+        );
+
+        int32x4_t vi_res = vcvtq_s32_f32(res1);
+        int32x4_t vi_vd  = vcvtq_s32_f32(vd);
+        int32x4_t vi_sat = vqaddq_s32(vi_res, vi_vd);
+        float32x4_t v_sat = vcvtq_f32_s32(vi_sat);
+
+        uint32x4_t mask1 = vcgtq_f32(v_gathered, v_threshold);
+        uint32x4_t mask2 = vmvnq_u32(vceqq_s32(exp_bucket, vdupq_n_s32(0)));
+        uint32x4_t final_mask = vandq_u32(mask1, mask2);
+
+        float32x4_t res2 = vbslq_f32(final_mask, v_sat, vsubq_f32(res1, v_gathered));
+        float32x4_t res3 = vfmaq_f32(res2, vd, va);
+        float32x4_t final_res = vmaxq_f32(res3, v_zero);
+
+        sum_v = vaddq_f32(sum_v, final_res);
     }
 
-    double total = vgetq_lane_f64(sum_v, 0) + vgetq_lane_f64(sum_v, 1);
+    float total = vgetq_lane_f32(sum_v, 0) + vgetq_lane_f32(sum_v, 1) +
+                  vgetq_lane_f32(sum_v, 2) + vgetq_lane_f32(sum_v, 3);
 
     for (; i < n; i++) {
-        double res = a[i] * b[i] + c[i];
-        if (res > 0) {
-            res = std::sqrt(res) / (d[i] + 1.1);
-            res = a[i] * res + b[i];
-            if (res > 0) {
-                res = std::sqrt(res) / (c[i] + 2.2);
-                if (res > 0) total += res;
+        uint32_t idx = (uint32_t)std::fabs(b[i]) & 0x7F;
+        float gathered = a[idx];
+
+        float res1 = std::fma(a[i], b[i], c[i]);
+
+        uint32_t bits;
+        std::memcpy(&bits, &res1, sizeof(bits));
+        bits &= 0x7FFFFFFFu;
+
+        int exp_bucket;
+        if (bits == 0) {
+            exp_bucket = -1;
+        } else {
+            uint32_t exp_field = bits >> 23;
+            if (exp_field != 0) {
+                exp_bucket = (int)exp_field - 127;
+            } else {
+                uint32_t mant = bits & 0x7FFFFFu;
+                exp_bucket = -118 - (int)__builtin_clz(mant);
             }
         }
+
+        int32_t vi_res = (int32_t)res1;
+        int32_t vi_d   = (int32_t)d[i];
+        int32_t vi_sat = (int32_t)std::clamp<int64_t>((int64_t)vi_res + (int64_t)vi_d, INT32_MIN, INT32_MAX);
+        float v_sat = (float)vi_sat;
+
+        float res2 = (gathered > 1.1f && exp_bucket != 0) ? v_sat : (res1 - gathered);
+        float res3 = res2 + d[i] * a[i];
+
+        if (res3 > 0.0f) total += res3;
     }
+
     return total;
 }
 
-inline double heavy_vector_math(const double* a, const double* b, const double* c, const double* d, int n) {
+inline float heavy_vector_math(const float* a, const float* b, const float* c, const float* d, int n) {
     static const unsigned long hwcaps2 = getauxval(AT_HWCAP2);
     static const bool has_sve2 = (hwcaps2 & HWCAP2_SVE2);
 
@@ -100,11 +191,11 @@ Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuVectorMathBe
     env->DeleteLocalRef(callbackClass_local);
     jmethodID updateProgressMethod = env->GetMethodID(callback_class_global_ref, "onProgressUpdate", "(F)V");
 
-    const int VECTOR_SIZE = 128; // Large data block to show SVE's VLA benefit
-    const long long total_iterations = 14000000LL;
+    const int VECTOR_SIZE = 128;
+    const long long total_iterations = 25000000LL;
     current_iterations_done_vector.store(0, std::memory_order_relaxed);
 
-    std::thread reporter_thread([callback_global_ref, updateProgressMethod]() {
+    std::thread reporter_thread([callback_global_ref, updateProgressMethod, total_iterations]() {
         JNIEnv* thread_env = nullptr;
         g_vm->AttachCurrentThread(&thread_env, nullptr);
 
@@ -140,21 +231,22 @@ Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuVectorMathBe
         LOGE("Failed to set thread priority for benchmark");
     }
 
-    std::vector<double> a(VECTOR_SIZE), b(VECTOR_SIZE), c(VECTOR_SIZE), d(VECTOR_SIZE);
+    std::vector<float> a(VECTOR_SIZE), b(VECTOR_SIZE), c(VECTOR_SIZE), d(VECTOR_SIZE);
     for(int i = 0; i < VECTOR_SIZE; i++) {
-        a[i] = 1.1 + i;
-        b[i] = 2.2 + i;
-        c[i] = 3.3 + i;
-        d[i] = 4.4 + i;
+        auto fi = static_cast<float>(i);
+        a[i] = 1.1f + fi;
+        b[i] = 2.2f + fi;
+        c[i] = 3.3f + fi;
+        d[i] = 4.4f + fi;
     }
 
     long long local_counter = 0;
-    double result = 0;
+    float result = 0;
     for (long long i = 0; i < total_iterations; i++) {
         result += heavy_vector_math(a.data(), b.data(), c.data(), d.data(), VECTOR_SIZE);
 
-        a[0] += 1e-10;
-        b[VECTOR_SIZE-1] -= 1e-10;
+        a[0] += 1e-7f;
+        b[VECTOR_SIZE-1] -= 1e-7f;
 
         local_counter++;
         if (local_counter >= 10000) {
@@ -171,7 +263,7 @@ Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuVectorMathBe
 
     auto end = std::chrono::high_resolution_clock::now();
 
-    volatile double sink = result;
+    volatile float sink = result;
     (void)sink;
 
     return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
