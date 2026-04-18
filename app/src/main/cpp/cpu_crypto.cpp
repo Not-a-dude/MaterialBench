@@ -107,7 +107,7 @@ Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuCryptoMultiC
     const unsigned int num_cores = perf_cores.size();
 
     // General enter buffer
-    unsigned char* data_in = (unsigned char*)aligned_alloc(64, SIZE);
+    auto* data_in = (unsigned char*)aligned_alloc(64, SIZE);
     if (!data_in) return -1;
     for (size_t i = 0; i < SIZE; i++) data_in[i] = (unsigned char)(i & 0xFF);
 
@@ -134,8 +134,8 @@ Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuCryptoMultiC
             pin_to_core(target_core);
             setpriority(PRIO_PROCESS, 0, -10);
 
-            unsigned char* t_enc = (unsigned char*)aligned_alloc(64, SIZE);
-            unsigned char* t_dec = (unsigned char*)aligned_alloc(64, SIZE);
+            auto* t_enc = (unsigned char*)aligned_alloc(64, SIZE);
+            auto* t_dec = (unsigned char*)aligned_alloc(64, SIZE);
 
             if (!t_enc || !t_dec) {
                 error_flag = true;
