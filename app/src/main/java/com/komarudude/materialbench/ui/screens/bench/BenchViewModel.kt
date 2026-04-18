@@ -37,7 +37,11 @@ class BenchViewModel(
 ) : AndroidViewModel(application) {
 
     private val app = getApplication<Application>()
-    private val classifier = MobileNetV4Classifier(
+    private val cpuClassifier = MobileNetV4Classifier(
+        app,
+        "mobilenetv4_conv_large.e600_r384_in1k_float16.tflite"
+    )
+    private val gpuClassifier = MobileNetV4Classifier(
         app,
         "mobilenetv4_conv_large.e600_r384_in1k_float16.tflite"
     )
@@ -173,7 +177,8 @@ class BenchViewModel(
                         } else 0
                     }
 
-                    "ai_litert" -> runLiteRtBenchmark(callback)
+                    "ai_litert_cpu" -> runLiteRtBenchmark(callback, cpuClassifier)
+                    "ai_litert_gpu" -> runLiteRtBenchmark(callback, gpuClassifier)
                     else -> 0
                 }
                 stepScores[step.id] = score
@@ -223,7 +228,7 @@ class BenchViewModel(
         }
     }
 
-    private suspend fun runLiteRtBenchmark(callback: BenchmarkProgressCallback): Int {
+    private suspend fun runLiteRtBenchmark(callback: BenchmarkProgressCallback, classifier: MobileNetV4Classifier): Int {
         classifier.initialize()
         val imagesCount = 100
         val allTestPaths = (1..imagesCount).map { "images/$it.jpg" }
@@ -260,6 +265,7 @@ class BenchViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        classifier.close()
+        cpuClassifier.close()
+        gpuClassifier.close()
     }
 }
