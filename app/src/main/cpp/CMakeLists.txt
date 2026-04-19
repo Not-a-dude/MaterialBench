@@ -17,6 +17,7 @@ set(SOURCES
         cpu_system_math.cpp
         cpu_vector_math.cpp
         cpu_crypto.cpp
+        cpu_compress.cpp
         ram.cpp
         rom_random.cpp
         rom_seq.cpp
