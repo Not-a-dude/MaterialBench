@@ -54,12 +54,16 @@ import androidx.activity.compose.BackHandler
 import android.content.pm.PackageInfo
 import com.komarudude.materialbench.R
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import com.komarudude.materialbench.data.native.NativeLib.nativeCleanup
 import com.komarudude.materialbench.ui.screens.bench.BenchScreen
 import com.komarudude.materialbench.ui.screens.bench.BenchViewModel
 import com.komarudude.materialbench.ui.screens.stress.StressScreen
 import com.komarudude.materialbench.ui.screens.stress.StressViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.currentBackStackEntryAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -248,6 +252,9 @@ fun BenchMainScreen() {
     var onResumeTrigger by remember { mutableIntStateOf(0) }
 
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
     val startDestination = Destination.MAIN
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
 
@@ -293,6 +300,11 @@ fun BenchMainScreen() {
     }
 
     NavigationSuiteScaffold(
+        layoutType = if (currentRoute == Destination.BENCHMARK.route && !benchViewModel.finished) {
+            NavigationSuiteType.None
+        } else {
+            NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
+        },
         navigationSuiteItems = {
             Destination.entries.filter { it.showInNav }.forEachIndexed { index, destination ->
                 item(
