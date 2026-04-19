@@ -124,12 +124,8 @@ class BenchViewModel(
                         NativeLib.nativeRunCpuMathMultiCoreBenchmark(callback)
                     }, 100_000_000)
 
-                    "cpu_crypto_single" -> runNativeBenchmark({
-                        NativeLib.nativeRunCpuCryptoSingleCoreBenchmark(callback)
-                    }, 100_000_000)
-
-                    "cpu_crypto_multi" -> runNativeBenchmark({
-                        NativeLib.nativeRunCpuCryptoMultiCoreBenchmark(callback)
+                    "cpu_crypto" -> runNativeBenchmark({
+                        NativeLib.nativeRunCpuCryptoBenchmark(callback)
                     }, 100_000_000)
 
                     "cpu_vector_math" -> runNativeBenchmark({

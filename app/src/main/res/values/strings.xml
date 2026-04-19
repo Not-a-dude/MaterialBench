@@ -33,8 +33,7 @@
     <string name="rom_rand_ops">ROM — Random operations</string>
     <string name="rom_seq_write">ROM — Sequential write</string>
     <string name="rom_seq_read">ROM — Sequential read</string>
-    <string name="cpu_crypto_single">CPU — Crypto (Single core)</string>
-    <string name="cpu_crypto_multi">CPU — Crypto (Multi core)</string>
+    <string name="cpu_crypto">CPU — Crypto</string>
     <string name="ai_litert_cpu">AI — LiteRT Cpu</string>
     <string name="ai_litert_gpu">AI — LiteRT Cpu</string>
     <string name="main_title">Main</string>

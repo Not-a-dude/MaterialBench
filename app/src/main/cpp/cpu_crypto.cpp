@@ -12,17 +12,10 @@
 #include <sys/resource.h>
 #include "utils.h"
 
-void get_ctr_iv_for_block(const unsigned char* base_iv, long long block_index, unsigned char* out_iv) {
-    memcpy(out_iv, base_iv, 16);
-    auto counter = (unsigned long long*)(out_iv + 8);
-    *counter += block_index;
-}
-
-
 extern "C" {
 
 JNIEXPORT jlong JNICALL
-Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuCryptoSingleCoreBenchmark(JNIEnv *env, jobject /*thiz*/, jobject callback) {
+Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuCryptoBenchmark(JNIEnv *env, jobject /*thiz*/, jobject callback) {
     const int SIZE = 256 * 1024 * 1024;
     const int ITERATIONS = 200;
 
@@ -94,102 +87,6 @@ Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuCryptoSingle
     munlock(data_in, SIZE); munlock(data_encrypted, SIZE); munlock(data_decrypted, SIZE);
     free(data_in); free(data_encrypted); free(data_decrypted);
     return duration_ms;
-}
-
-JNIEXPORT jlong JNICALL
-Java_com_komarudude_materialbench_data_native_NativeLib_nativeRunCpuCryptoMultiCoreBenchmark(
-        JNIEnv *env, jobject thiz, jobject callback) {
-
-    const int SIZE = 256 * 1024 * 1024;
-    const int TOTAL_ITERATIONS = 200;
-
-    std::vector<int> perf_cores = get_performance_cores();
-    const unsigned int num_cores = perf_cores.size();
-
-    // General enter buffer
-    auto* data_in = (unsigned char*)aligned_alloc(64, SIZE);
-    if (!data_in) return -1;
-    for (size_t i = 0; i < SIZE; i++) data_in[i] = (unsigned char)(i & 0xFF);
-
-    jobject callback_global_ref = env->NewGlobalRef(callback);
-    jclass callback_class = env->GetObjectClass(callback_global_ref);
-    jmethodID update_progress_method_id = env->GetMethodID(callback_class, "onProgressUpdate", "(F)V");
-
-    std::atomic<int> next_iteration{0};
-    std::atomic<int> progress_counter{0};
-    std::atomic<bool> error_flag{false};
-
-    auto total_start = std::chrono::high_resolution_clock::now();
-    std::vector<std::thread> threads;
-
-    for (unsigned int t = 0; t < num_cores; ++t) {
-        int target_core = perf_cores[t];
-
-        threads.emplace_back([=, &next_iteration, &progress_counter, &error_flag, &data_in]() {
-            JNIEnv* thread_env;
-            if (g_vm->AttachCurrentThread(&thread_env, nullptr) != JNI_OK) {
-                error_flag = true; return;
-            }
-
-            pin_to_core(target_core);
-            setpriority(PRIO_PROCESS, 0, -10);
-
-            auto* t_enc = (unsigned char*)aligned_alloc(64, SIZE);
-            auto* t_dec = (unsigned char*)aligned_alloc(64, SIZE);
-
-            if (!t_enc || !t_dec) {
-                error_flag = true;
-            } else {
-                unsigned char key[32]; memset(key, 0x11, 32);
-                unsigned char base_iv[16]; memset(base_iv, 0x22, 16);
-
-                while (true) {
-                    int iter = next_iteration.fetch_add(1);
-                    if (iter >= TOTAL_ITERATIONS || error_flag.load()) break;
-
-                    unsigned char thread_iv[16];
-                    get_ctr_iv_for_block(base_iv, (long long)iter * (SIZE / 16), thread_iv);
-
-                    // Encrypt
-                    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-                    int outlen = 0;
-                    EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), nullptr, key, thread_iv);
-                    EVP_EncryptUpdate(ctx, t_enc, &outlen, data_in, SIZE);
-                    EVP_CIPHER_CTX_free(ctx);
-
-                    // Decrypt
-                    ctx = EVP_CIPHER_CTX_new();
-                    EVP_DecryptInit_ex(ctx, EVP_aes_256_ctr(), nullptr, key, thread_iv);
-                    EVP_DecryptUpdate(ctx, t_dec, &outlen, t_enc, SIZE);
-                    EVP_CIPHER_CTX_free(ctx);
-
-                    // Check
-                    if (memcmp(data_in, t_dec, SIZE) != 0) error_flag = true;
-
-                    // Progress
-                    int p = progress_counter.fetch_add(2) + 2;
-                    if (iter % 5 == 0) {
-                        thread_env->CallVoidMethod(callback_global_ref, update_progress_method_id, (float)p / (TOTAL_ITERATIONS * 2));
-                    }
-                }
-            }
-
-            // Clean before exit from thread
-            if (t_enc) free(t_enc);
-            if (t_dec) free(t_dec);
-            g_vm->DetachCurrentThread();
-        });
-    }
-
-    for (auto &th : threads) th.join();
-
-    free(data_in);
-    env->DeleteGlobalRef(callback_global_ref);
-
-    if (error_flag) return -11;
-
-    auto total_end = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration_cast<std::chrono::milliseconds>(total_end - total_start).count();
 }
 
 }

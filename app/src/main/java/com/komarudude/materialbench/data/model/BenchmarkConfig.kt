@@ -13,8 +13,7 @@ object BenchmarkConfig {
         // CPU
         TestStep("cpu_math_single", R.string.cpu_math_single, TestCategory.CPU),
         TestStep("cpu_math_multi", R.string.cpu_math_multi, TestCategory.CPU),
-        TestStep("cpu_crypto_single", R.string.cpu_crypto_single, TestCategory.CPU),
-        TestStep("cpu_crypto_multi", R.string.cpu_crypto_multi, TestCategory.CPU),
+        TestStep("cpu_crypto", R.string.cpu_crypto, TestCategory.CPU),
         TestStep("cpu_vector_math", R.string.cpu_vector_math, TestCategory.CPU),
         TestStep("cpu_compress", R.string.cpu_compress, TestCategory.CPU),
 
