@@ -4,16 +4,22 @@ project(MaterialBenchNdk)
 find_package(Vulkan REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+find_program(VULKAN_GLSLC_EXECUTABLE NAMES glslc glslc.exe)
+if(NOT VULKAN_GLSLC_EXECUTABLE)
+    message(FATAL_ERROR "glslc not found! Install Vulkan SDK or shaderc.")
+endif()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_compile_options(-O3 -funroll-loops -flto=thin)
+add_link_options(-flto=thin)
+
 set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd CLI")
 set(ZSTD_LEGACY_LEVEL 0 CACHE STRING "" FORCE)
 
 add_subdirectory(external/boringssl)
 add_subdirectory(external/zstd/build/cmake)
-
-find_program(VULKAN_GLSLC_EXECUTABLE NAMES glslc glslc.exe)
-if(NOT VULKAN_GLSLC_EXECUTABLE)
-    message(FATAL_ERROR "glslc not found! Install Vulkan SDK or shaderc.")
-endif()
 
 set(SOURCES
         utils.cpp
@@ -27,8 +33,8 @@ set(SOURCES
         vulkan_compute.cpp
 )
 
-set_source_files_properties(cpu_crypto.cpp PROPERTIES COMPILE_FLAGS "-march=armv8-a+simd")
-set_source_files_properties(cpu_vector_math.cpp PROPERTIES COMPILE_FLAGS "-march=armv8-a+simd")
+set_source_files_properties(cpu_crypto.cpp cpu_vector_math.cpp
+    PROPERTIES COMPILE_FLAGS "-march=armv8-a+simd")
 
 set(SH_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/gemm_shader_tiled.comp")
 set(SH_BINARY "${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv")
@@ -56,10 +62,6 @@ target_include_directories(materialbench PRIVATE
         external/boringssl/include
         ${CMAKE_CURRENT_BINARY_DIR}
 )
-
-target_compile_features(materialbench PRIVATE cxx_std_17)
-
-target_compile_options(materialbench PRIVATE -O3 -funroll-loops -flto=thin)
 
 target_link_libraries(materialbench
         android
