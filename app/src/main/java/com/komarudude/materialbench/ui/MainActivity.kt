@@ -103,7 +103,7 @@ fun MainScreen(
                         Toast.makeText(context, context.getString(R.string.stress_running), Toast.LENGTH_SHORT).show()
                         return@handler
                     }
-                    if (memAvailable < 1024) {
+                    if (memAvailable < 1536) {
                         Toast.makeText(context, context.getString(R.string.need_more_ram), Toast.LENGTH_LONG).show()
                         return@handler
                     }
