@@ -62,4 +62,5 @@
     <string name="integrity_error_text">The graphics test version or signature does not match the requirements for this version of the main app. Please download the correct version. This subtest will be skipped.</string>
     <string name="ok">Got it</string>
     <string name="cpu_vector_math" translatable="false">CPU — Vector math</string>
+    <string name="cpu_compress">CPU — Compress</string>
 </resources>

@@ -136,6 +136,10 @@ class BenchViewModel(
                         NativeLib.nativeRunCpuVectorMathBenchmark(callback)
                     }, 100_000_000)
 
+                    "cpu_compress" -> runNativeBenchmark({
+                        NativeLib.nativeRunCpuCompressBenchmark(app.assets, callback)
+                    }, 100_000_000)
+
                     "ram_seq_write" -> runNativeBenchmark({
                         NativeLib.nativeRunRamSequentialWriteBenchmark(callback)
                     }, 10_000_000)

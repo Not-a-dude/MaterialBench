@@ -16,6 +16,7 @@ object BenchmarkConfig {
         TestStep("cpu_crypto_single", R.string.cpu_crypto_single, TestCategory.CPU),
         TestStep("cpu_crypto_multi", R.string.cpu_crypto_multi, TestCategory.CPU),
         TestStep("cpu_vector_math", R.string.cpu_vector_math, TestCategory.CPU),
+        TestStep("cpu_compress", R.string.cpu_compress, TestCategory.CPU),
 
         // GPU
         TestStep("gpu_gemm", R.string.vulkan_compute_gemm, TestCategory.GPU),

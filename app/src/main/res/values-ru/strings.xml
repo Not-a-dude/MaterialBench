@@ -53,4 +53,5 @@
     <string name="integrity_error_title">Ошибка целостности</string>
     <string name="integrity_error_text">Версия или подпись графического теста не совпадает с заданными для этой версии основного приложения. Пожалуйста, загрузите корректную версию. Этот подтест будет пропущен.</string>
     <string name="ok">Понятно</string>
+    <string name="cpu_compress">CPU — Сжатие</string>
 </resources>

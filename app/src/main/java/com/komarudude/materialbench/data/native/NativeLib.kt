@@ -26,6 +26,7 @@ object NativeLib {
     external fun nativeRunRomSequentialReadBenchmark(filesDir: String, callback: BenchmarkProgressCallback): Long
     external fun nativeRunCpuCryptoSingleCoreBenchmark(callback: BenchmarkProgressCallback): Long
     external fun nativeRunCpuCryptoMultiCoreBenchmark(callback: BenchmarkProgressCallback): Long
+    external fun nativeRunCpuCompressBenchmark(assetManager: android.content.res.AssetManager, callback: BenchmarkProgressCallback): Long
     external fun nativeRunVulkanGEMMBenchmark(callback: BenchmarkProgressCallback): Long
     external fun hasVulkanRt(): Boolean
     external fun nativeStartCpuStress()

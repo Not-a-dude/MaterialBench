@@ -239,6 +239,7 @@ fun BenchMainScreen() {
     val romSeqRead = stringResource(R.string.rom_seq_read)
     val cpuCryptoSingle = stringResource(R.string.cpu_crypto_single)
     val cpuCryptoMulti = stringResource(R.string.cpu_crypto_multi)
+    val cpuCompress = stringResource(R.string.cpu_compress)
     val gpuVulkanComputeGemm = stringResource(R.string.vulkan_compute_gemm)
     val gpuRT = stringResource(R.string.gpu_rt)
     val aiLiteRTCpu = stringResource(R.string.ai_litert_cpu)
@@ -264,7 +265,8 @@ fun BenchMainScreen() {
                 SubBenchmark(titleKey = cpuMathMultiString, scoreKey = "cpu_math_multi"),
                 SubBenchmark(titleKey = cpuCryptoSingle, scoreKey = "cpu_crypto_single"),
                 SubBenchmark(titleKey = cpuCryptoMulti, scoreKey = "cpu_crypto_multi"),
-                SubBenchmark(titleKey = cpuVectorMathString, scoreKey = "cpu_vector_math")
+                SubBenchmark(titleKey = cpuVectorMathString, scoreKey = "cpu_vector_math"),
+                SubBenchmark(titleKey = cpuCompress, scoreKey = "cpu_compress")
             ),
             "gpu" to listOf(
                 SubBenchmark(titleKey = gpuVulkanComputeGemm, scoreKey = "gpu_gemm"),
