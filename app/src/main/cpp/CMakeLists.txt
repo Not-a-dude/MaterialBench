@@ -4,6 +4,9 @@ project(MaterialBenchNdk)
 find_package(Vulkan REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd CLI")
+set(ZSTD_LEGACY_LEVEL 0 CACHE STRING "" FORCE)
+
 add_subdirectory(external/boringssl)
 add_subdirectory(external/zstd/build/cmake)
 
@@ -30,8 +33,6 @@ set_source_files_properties(cpu_vector_math.cpp PROPERTIES COMPILE_FLAGS "-march
 set(SH_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/gemm_shader_tiled.comp")
 set(SH_BINARY "${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv")
 set(SH_HEADER "${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv.h")
-set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd CLI")
-set(ZSTD_LEGACY_LEVEL 0 CACHE STRING "" FORCE)
 
 add_custom_command(
         OUTPUT "${SH_BINARY}"
