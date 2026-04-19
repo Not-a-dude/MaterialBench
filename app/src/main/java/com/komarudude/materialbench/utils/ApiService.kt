@@ -32,7 +32,7 @@ interface ApiService {
 }
 
 object RetrofitClient {
-    private const val BASE_URL = "https://dude.privetbradok.ru:9560/"
+    private const val BASE_URL = "https://dude.privetbradok.space:9560/"
 
     private val okHttpClient: OkHttpClient by lazy {
         val builder = OkHttpClient.Builder()
