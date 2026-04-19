@@ -5,6 +5,7 @@ find_package(Vulkan REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 add_subdirectory(external/boringssl)
+add_subdirectory(external/zstd/build/cmake)
 
 find_program(VULKAN_GLSLC_EXECUTABLE NAMES glslc glslc.exe)
 if(NOT VULKAN_GLSLC_EXECUTABLE)
@@ -28,6 +29,8 @@ set_source_files_properties(cpu_vector_math.cpp PROPERTIES COMPILE_FLAGS "-march
 set(SH_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/gemm_shader_tiled.comp")
 set(SH_BINARY "${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv")
 set(SH_HEADER "${CMAKE_CURRENT_BINARY_DIR}/gemm_shader_tiled.comp.spv.h")
+set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd CLI")
+set(ZSTD_LEGACY_LEVEL 0 CACHE STRING "" FORCE)
 
 add_custom_command(
         OUTPUT "${SH_BINARY}"
@@ -63,4 +66,5 @@ target_link_libraries(materialbench
         crypto
         jnigraphics
         vulkan
+        libzstd_static
 )

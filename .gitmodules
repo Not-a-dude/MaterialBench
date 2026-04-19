@@ -1,3 +1,6 @@
 [submodule "app/src/main/cpp/external/boringssl"]
 	path = app/src/main/cpp/external/boringssl
 	url = https://github.com/google/boringssl
+[submodule "app/src/main/cpp/external/zstd"]
+	path = app/src/main/cpp/external/zstd
+	url = https://github.com/facebook/zstd.git
