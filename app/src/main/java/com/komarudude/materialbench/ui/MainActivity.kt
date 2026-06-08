@@ -246,7 +246,6 @@ fun BenchMainScreen() {
     val gpuVulkanComputeGemm = stringResource(R.string.vulkan_compute_gemm)
     val gpuRT = stringResource(R.string.gpu_rt)
     val aiLiteRTCpu = stringResource(R.string.ai_litert_cpu)
-    val aiLiteRTGpu = stringResource(R.string.ai_litert_gpu)
 
     val lifecycleOwner = LocalLifecycleOwner.current
     var onResumeTrigger by remember { mutableIntStateOf(0) }
@@ -285,8 +284,7 @@ fun BenchMainScreen() {
                 SubBenchmark(titleKey = romSeqRead, scoreKey = "rom_seq_read")
             ),
             "ai" to listOf(
-                SubBenchmark(titleKey = aiLiteRTCpu, scoreKey = "ai_litert_cpu"),
-                SubBenchmark(titleKey = aiLiteRTGpu, scoreKey = "ai_litert_gpu")
+                SubBenchmark(titleKey = aiLiteRTCpu, scoreKey = "ai_litert_cpu")
             )
         )
 

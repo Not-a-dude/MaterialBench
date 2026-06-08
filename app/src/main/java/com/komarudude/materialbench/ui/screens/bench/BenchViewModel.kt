@@ -41,10 +41,6 @@ class BenchViewModel(
         app,
         "mobilenetv4_conv_large.e600_r384_in1k_float16.tflite"
     )
-    private val gpuClassifier = MobileNetV4Classifier(
-        app,
-        "mobilenetv4_conv_large.e600_r384_in1k_float16.tflite"
-    )
 
     var currentStepIndex by mutableIntStateOf(-1)
     var currentStepProgress by mutableFloatStateOf(0f)
@@ -178,7 +174,6 @@ class BenchViewModel(
                     }
 
                     "ai_litert_cpu" -> runLiteRtBenchmark(callback, cpuClassifier)
-                    "ai_litert_gpu" -> runLiteRtBenchmark(callback, gpuClassifier)
                     else -> 0
                 }
                 stepScores[step.id] = score
@@ -266,6 +261,5 @@ class BenchViewModel(
     override fun onCleared() {
         super.onCleared()
         cpuClassifier.close()
-        gpuClassifier.close()
     }
 }

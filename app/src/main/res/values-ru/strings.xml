@@ -27,7 +27,6 @@
     <string name="cpu_math_single">CPU — System Math (Одноядерный)</string>
     <string name="cpu_crypto">CPU — Crypto</string>
     <string name="ai_litert_cpu">ИИ — LiteRT Cpu</string>
-    <string name="ai_litert_gpu">ИИ — LiteRT Gpu</string>
     <string name="main_title">Главная</string>
     <string name="stress_title">Стресс тест</string>
     <string name="vulkan_compute_unsupported">Vulkan Compute не поддерживается на вашем устройстве</string>

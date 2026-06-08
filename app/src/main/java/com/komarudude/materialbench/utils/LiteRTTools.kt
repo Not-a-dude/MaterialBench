@@ -14,7 +14,7 @@ class MobileNetV4Classifier(
     private val context: Context,
     private val modelFileName: String = "mobilenetv4_conv_large.e600_r384_in1k_float16.tflite",
     private val labelFileName: String = "imagenet_classes.txt",
-    private val accelerator: Accelerator = Accelerator.GPU
+    private val accelerator: Accelerator = Accelerator.CPU
 ) {
     private val INPUT_HEIGHT = 384
     private val INPUT_WIDTH = 384
