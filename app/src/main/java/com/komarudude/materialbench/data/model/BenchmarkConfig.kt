@@ -29,7 +29,6 @@ object BenchmarkConfig {
         TestStep("rom_seq_read", R.string.rom_seq_read, TestCategory.MEM),
 
         // AI
-        TestStep("ai_litert_cpu", R.string.ai_litert_cpu, TestCategory.AI),
-        TestStep("ai_litert_gpu", R.string.ai_litert_gpu, TestCategory.AI)
+        TestStep("ai_litert_cpu", R.string.ai_litert_cpu, TestCategory.AI)
     )
 }

@@ -1,4 +1,4 @@
-package com.komarudude.materialbench.ui
+package com.komarudude.materialbench.ui.screens.main
 
 import android.app.Application
 import android.content.pm.PackageInfo
@@ -16,7 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
+class BenchMainViewModel(application: Application) : AndroidViewModel(application) {
     private val app = getApplication<Application>()
 
     private val _overallScore = mutableStateOf("0")
@@ -52,7 +52,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val scores = withContext(Dispatchers.IO) {
                 val currentOverall = BenchScores.getScore(app, "overall_score")
-                
+
                 val cpuSub = subBenchKeys["cpu"] ?: emptyList()
                 val gpuSub = subBenchKeys["gpu"] ?: emptyList()
                 val memSub = subBenchKeys["mem"] ?: emptyList()
@@ -74,13 +74,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     Benchmark(memTitle, memDesc, memIcon, if (memScore == 0) null else memScore.toString(), {}, memSub),
                     Benchmark(aiTitle, aiDesc, aiIcon, if (aiScore == 0) null else aiScore.toString(), {}, aiSub)
                 )
-                
+
                 Triple(currentOverall.toString(), benchmarkList, currentOverall)
             }
 
             _overallScore.value = scores.first
             _benchmarks.value = scores.second
-            
+
             val rawScore = scores.third
             if (rawScore > 0) {
                 fetchPercentileRank(rawScore, packageInfo.longVersionCode)

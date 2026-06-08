@@ -44,7 +44,6 @@
     <string name="device_not_supported">Девайс не поддерживается</string>
     <string name="device_incomplete_feature">Отсутствуют некоторые обязательные функции. Результат теста будет неполным.</string>
     <string name="bench_version">Версия: %1$s (%2$d)</string>
-    <string name="need_more_ram">Вам нужно больше свободной ОЗУ для запуска теста</string>
     <string name="need_more_rom">Вам нужно больше свободной ПЗУ для запуска теста</string>
     <string name="low_bat_temp_dialog_title">Внимание: низкая температура</string>
     <string name="low_bat_temp_dialog_msg">Температура устройства (%1$.1f°C) слишком низкая. Продолжение стресс-теста может привести к сбоям в работе или возможному повреждению вашего устройства.</string>
