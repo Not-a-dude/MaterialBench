@@ -15,6 +15,7 @@ import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 data class StressPoint(val timeSec: Float, val temp: Float)
 
@@ -77,7 +78,7 @@ class StressViewModel(application: Application) : AndroidViewModel(application) 
                     showLowTempDialog = true
                     stopStress()
                 }
-                delay(1000L)
+                delay(1000L.milliseconds)
             }
         }
     }
