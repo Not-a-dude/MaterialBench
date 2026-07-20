@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.komarudude.materialbench"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.komarudude.materialbench"
@@ -18,7 +18,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        ndkVersion = "30.0.14904198"
+        ndkVersion = "29.0.14206865"
 
         ndk {
             abiFilters.add("arm64-v8a")
