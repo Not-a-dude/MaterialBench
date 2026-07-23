@@ -31,6 +31,9 @@ set(SOURCES
         rom_random.cpp
         rom_seq.cpp
         vulkan_compute.cpp
+        vulkan/vulkan_context.cpp
+        vulkan/gemm_executor.cpp
+        vulkan/compute_service.cpp
 )
 
 set_source_files_properties(cpu_crypto.cpp cpu_vector_math.cpp
@@ -49,7 +52,7 @@ add_custom_command(
 
 add_custom_command(
         OUTPUT "${SH_HEADER}"
-        COMMAND ${Python3_EXECUTABLE} -c "import sys; d=open(r'${SH_BINARY}','rb').read(); out=open(r'${SH_HEADER}','w'); name='gemm_shader_tiled_comp_spv'; out.write('unsigned char %s[] = {%s};\\nunsigned int %s_len = %d;\\n' % (name, ','.join('0x%02x' % b for b in d), name, len(d))); out.close()"
+        COMMAND ${Python3_EXECUTABLE} -c "d=open(r'${SH_BINARY}','rb').read(); name='gemm_shader_tiled_comp_spv'; open(r'${SH_HEADER}','w').write('alignas(4) const unsigned char %s[] = {%s};\\nconst unsigned int %s_len = %d;\\n' % (name, ','.join('0x%02x' % b for b in d), name, len(d)))"
         DEPENDS "${SH_BINARY}"
         VERBATIM
 )

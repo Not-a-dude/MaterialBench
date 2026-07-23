@@ -19,45 +19,45 @@ layout(push_constant) uniform PushConstants {
     uint N;
     uint M;
     uint K;
+    uint baseWorkgroupX;
+    uint baseWorkgroupY;
 } pc;
 
 shared float tileA[TILE_DIM][TILE_DIM];
 shared float tileB[TILE_DIM][TILE_DIM];
 
 void main() {
-    uint globalRow = gl_GlobalInvocationID.y;
-    uint globalCol = gl_GlobalInvocationID.x;
-    uint localRow = gl_LocalInvocationID.y;
-    uint localCol = gl_LocalInvocationID.x;
+    const uint globalRow =
+        pc.baseWorkgroupY * TILE_DIM + gl_GlobalInvocationID.y;
+    const uint globalColumn =
+        pc.baseWorkgroupX * TILE_DIM + gl_GlobalInvocationID.x;
+    const uint localRow = gl_LocalInvocationID.y;
+    const uint localColumn = gl_LocalInvocationID.x;
 
     float sum = 0.0;
-    uint numTiles = (pc.K + TILE_DIM - 1) / TILE_DIM;
+    const uint tileCount = (pc.K + TILE_DIM - 1) / TILE_DIM;
 
-    for (uint tile = 0; tile < numTiles; ++tile) {
-        // Load tiles with bounds checking
-        uint aRow = globalRow;
-        uint aCol = tile * TILE_DIM + localCol;
-        uint bRow = tile * TILE_DIM + localRow;
-        uint bCol = globalCol;
+    for (uint tile = 0; tile < tileCount; ++tile) {
+        const uint aColumn = tile * TILE_DIM + localColumn;
+        const uint bRow = tile * TILE_DIM + localRow;
 
-        tileA[localRow][localCol] = (aRow < pc.N && aCol < pc.K)
-        ? matrixA.elements[aRow * pc.K + aCol] : 0.0;
-
-        tileB[localRow][localCol] = (bRow < pc.K && bCol < pc.M)
-        ? matrixB.elements[bRow * pc.M + bCol] : 0.0;
+        tileA[localRow][localColumn] =
+            (globalRow < pc.N && aColumn < pc.K)
+                ? matrixA.elements[globalRow * pc.K + aColumn]
+                : 0.0;
+        tileB[localRow][localColumn] =
+            (bRow < pc.K && globalColumn < pc.M)
+                ? matrixB.elements[bRow * pc.M + globalColumn]
+                : 0.0;
 
         barrier();
-
-        // Compute partial sum
         for (uint k = 0; k < TILE_DIM; ++k) {
-            sum += tileA[localRow][k] * tileB[k][localCol];
+            sum += tileA[localRow][k] * tileB[k][localColumn];
         }
-
         barrier();
     }
 
-    // Write result with bounds checking
-    if (globalRow < pc.N && globalCol < pc.M) {
-        matrixC.elements[globalRow * pc.M + globalCol] = sum;
+    if (globalRow < pc.N && globalColumn < pc.M) {
+        matrixC.elements[globalRow * pc.M + globalColumn] = sum;
     }
 }
