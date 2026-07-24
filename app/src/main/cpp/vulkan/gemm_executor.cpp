@@ -15,9 +15,12 @@
 namespace materialbench::vulkan {
 namespace {
 
-// One workgroup computes a 16x16 tile. This value must match local_size and the
-// algorithm implemented by the compute shader.
-constexpr uint32_t kTileDimension = 16;
+// These values must match the register-tiled compute shader. A workgroup has
+// 8x8 invocations and produces one 32x32 output tile.
+constexpr uint32_t kLocalSizeX = 8;
+constexpr uint32_t kLocalSizeY = 8;
+constexpr uint32_t kOutputTileX = 32;
+constexpr uint32_t kOutputTileY = 32;
 
 // Small dispatch parameters are passed without a separate uniform buffer.
 // The fields and their order must match the shader's push-constant block.
@@ -62,29 +65,28 @@ GemmExecutor::~GemmExecutor() {
 }
 
 bool GemmExecutor::initialize() {
-    if (config_.rows == 0 || config_.columns == 0 || config_.depth == 0 ||
-        config_.chunkWorkgroupsX == 0 || config_.chunkWorkgroupsY == 0) {
+    if (config_.rows == 0 || config_.columns == 0 || config_.depth == 0) {
         LOGE("Invalid GEMM configuration");
         return false;
     }
 
-    // Round up so the final partial tile is processed as well. Shader invocations
-    // outside the matrix bounds are discarded by the shader itself.
-    workgroupCountX_ = (config_.columns + kTileDimension - 1) / kTileDimension;
-    workgroupCountY_ = (config_.rows + kTileDimension - 1) / kTileDimension;
+    // One 8x8 workgroup emits a 32x32 output tile. Partial edge tiles are
+    // bounds-checked by the shader.
+    workgroupCountX_ = (config_.columns + kOutputTileX - 1) / kOutputTileX;
+    workgroupCountY_ = (config_.rows + kOutputTileY - 1) / kOutputTileY;
 
     const auto& limits = context_.properties().limits;
-    if (kTileDimension * kTileDimension > limits.maxComputeWorkGroupInvocations ||
-        kTileDimension > limits.maxComputeWorkGroupSize[0] ||
-        kTileDimension > limits.maxComputeWorkGroupSize[1] ||
-        config_.chunkWorkgroupsX > limits.maxComputeWorkGroupCount[0] ||
-        config_.chunkWorkgroupsY > limits.maxComputeWorkGroupCount[1]) {
+    if (kLocalSizeX * kLocalSizeY > limits.maxComputeWorkGroupInvocations ||
+        kLocalSizeX > limits.maxComputeWorkGroupSize[0] ||
+        kLocalSizeY > limits.maxComputeWorkGroupSize[1] ||
+        workgroupCountX_ > limits.maxComputeWorkGroupCount[0] ||
+        workgroupCountY_ > limits.maxComputeWorkGroupCount[1]) {
         LOGE("Vulkan compute limits do not support the GEMM dispatch configuration");
         return false;
     }
 
     return createPipeline() && createBuffers() && createDescriptors() &&
-           createCommandPool();
+           createSubmissionObjects();
 }
 
 bool GemmExecutor::createPipeline() {
@@ -262,137 +264,84 @@ bool GemmExecutor::createDescriptors() {
     return true;
 }
 
-bool GemmExecutor::createCommandPool() {
+bool GemmExecutor::createSubmissionObjects() {
     VkCommandPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
     poolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
                      VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     poolInfo.queueFamilyIndex = context_.computeQueueFamilyIndex();
-    return vkSucceeded(vkCreateCommandPool(context_.device(), &poolInfo, nullptr,
-                                            &commandPool_),
-                       "vkCreateCommandPool");
+    if (!vkSucceeded(vkCreateCommandPool(context_.device(), &poolInfo, nullptr,
+                                         &commandPool_),
+                     "vkCreateCommandPool")) {
+        return false;
+    }
+
+    VkCommandBufferAllocateInfo allocationInfo{
+        VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+    allocationInfo.commandPool = commandPool_;
+    allocationInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocationInfo.commandBufferCount = 1;
+    if (!vkSucceeded(vkAllocateCommandBuffers(context_.device(), &allocationInfo,
+                                               &commandBuffer_),
+                     "vkAllocateCommandBuffers")) {
+        return false;
+    }
+
+    VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    return vkSucceeded(vkCreateFence(context_.device(), &fenceInfo, nullptr, &fence_),
+                       "vkCreateFence");
 }
 
 int64_t GemmExecutor::run(const ProgressCallback& progress,
                           const StopPredicate& shouldStop,
                           bool validateResult) {
-    // One command buffer and fence are reused for all chunks. Waiting for the
-    // fence after each submission provides a safe boundary for progress updates
-    // and cancellation checks.
-    VkCommandBufferAllocateInfo commandAllocation{
-        VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-    commandAllocation.commandPool = commandPool_;
-    commandAllocation.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    commandAllocation.commandBufferCount = 1;
+    if (shouldStop && shouldStop()) return 0;
 
-    VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
-    if (!vkSucceeded(vkAllocateCommandBuffers(context_.device(), &commandAllocation,
-                                               &commandBuffer),
-                     "vkAllocateCommandBuffers")) {
+    if (!vkSucceeded(vkResetCommandBuffer(commandBuffer_, 0),
+                     "vkResetCommandBuffer")) {
         return -1;
     }
 
-    VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-    VkFence fence = VK_NULL_HANDLE;
-    if (!vkSucceeded(vkCreateFence(context_.device(), &fenceInfo, nullptr, &fence),
-                     "vkCreateFence")) {
-        vkFreeCommandBuffers(context_.device(), commandPool_, 1, &commandBuffer);
+    VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (!vkSucceeded(vkBeginCommandBuffer(commandBuffer_, &beginInfo),
+                     "vkBeginCommandBuffer")) {
         return -1;
     }
 
-    const auto cleanupSubmissionObjects = [&] {
-        vkDestroyFence(context_.device(), fence, nullptr);
-        vkFreeCommandBuffers(context_.device(), commandPool_, 1, &commandBuffer);
-    };
-    const auto fail = [&]() -> int64_t {
-        context_.waitIdle();
-        cleanupSubmissionObjects();
-        return -1;
-    };
+    vkCmdBindPipeline(commandBuffer_, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_);
+    vkCmdBindDescriptorSets(commandBuffer_, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            pipelineLayout_, 0, 1, &descriptorSet_, 0, nullptr);
 
-    // Split the complete workgroup grid into chunks. The current chunk offset is
-    // passed to the shader through baseWorkgroupX/Y.
-    const uint64_t batchesX =
-        (workgroupCountX_ + config_.chunkWorkgroupsX - 1) / config_.chunkWorkgroupsX;
-    const uint64_t batchesY =
-        (workgroupCountY_ + config_.chunkWorkgroupsY - 1) / config_.chunkWorkgroupsY;
-    const uint64_t totalBatches = batchesX * batchesY;
-    uint64_t completedBatches = 0;
-    bool commandBufferWasSubmitted = false;
-    bool cancelled = false;
+    const PushConstants constants{config_.rows, config_.columns, config_.depth, 0, 0};
+    vkCmdPushConstants(commandBuffer_, pipelineLayout_, VK_SHADER_STAGE_COMPUTE_BIT,
+                       0, sizeof(constants), &constants);
+    vkCmdDispatch(commandBuffer_, workgroupCountX_, workgroupCountY_, 1);
+
+    if (!vkSucceeded(vkEndCommandBuffer(commandBuffer_), "vkEndCommandBuffer") ||
+        !vkSucceeded(vkResetFences(context_.device(), 1, &fence_),
+                     "vkResetFences")) {
+        return -1;
+    }
+
+    VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer_;
 
     const auto start = std::chrono::steady_clock::now();
-    for (uint32_t baseY = 0; baseY < workgroupCountY_;
-         baseY += config_.chunkWorkgroupsY) {
-        for (uint32_t baseX = 0; baseX < workgroupCountX_;
-             baseX += config_.chunkWorkgroupsX) {
-            if (shouldStop && shouldStop()) {
-                cancelled = true;
-                break;
-            }
-
-            if (commandBufferWasSubmitted &&
-                !vkSucceeded(vkResetCommandBuffer(
-                                 commandBuffer,
-                                 VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT),
-                             "vkResetCommandBuffer")) {
-                return fail();
-            }
-
-            VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-            if (!vkSucceeded(vkBeginCommandBuffer(commandBuffer, &beginInfo),
-                             "vkBeginCommandBuffer")) {
-                return fail();
-            }
-
-            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_);
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                    pipelineLayout_, 0, 1, &descriptorSet_, 0, nullptr);
-
-            const PushConstants constants{config_.rows, config_.columns, config_.depth,
-                                          baseX, baseY};
-            vkCmdPushConstants(commandBuffer, pipelineLayout_, VK_SHADER_STAGE_COMPUTE_BIT,
-                               0, sizeof(constants), &constants);
-
-            const uint32_t dispatchX =
-                std::min(config_.chunkWorkgroupsX, workgroupCountX_ - baseX);
-            const uint32_t dispatchY =
-                std::min(config_.chunkWorkgroupsY, workgroupCountY_ - baseY);
-            vkCmdDispatch(commandBuffer, dispatchX, dispatchY, 1);
-
-            if (!vkSucceeded(vkEndCommandBuffer(commandBuffer), "vkEndCommandBuffer") ||
-                !vkSucceeded(vkResetFences(context_.device(), 1, &fence),
-                             "vkResetFences")) {
-                return fail();
-            }
-
-            VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-            submitInfo.commandBufferCount = 1;
-            submitInfo.pCommandBuffers = &commandBuffer;
-            if (!vkSucceeded(vkQueueSubmit(context_.computeQueue(), 1, &submitInfo, fence),
-                             "vkQueueSubmit")) {
-                return fail();
-            }
-            commandBufferWasSubmitted = true;
-
-            if (!vkSucceeded(vkWaitForFences(context_.device(), 1, &fence, VK_TRUE,
-                                              UINT64_MAX),
-                             "vkWaitForFences")) {
-                return fail();
-            }
-
-            ++completedBatches;
-            if (progress) {
-                progress(static_cast<float>(completedBatches) /
-                         static_cast<float>(totalBatches));
-            }
-        }
-        if (cancelled) break;
+    if (!vkSucceeded(vkQueueSubmit(context_.computeQueue(), 1, &submitInfo, fence_),
+                     "vkQueueSubmit")) {
+        return -1;
+    }
+    if (!vkSucceeded(vkWaitForFences(context_.device(), 1, &fence_, VK_TRUE,
+                                      UINT64_MAX),
+                     "vkWaitForFences")) {
+        context_.waitIdle();
+        return -1;
     }
     const auto finish = std::chrono::steady_clock::now();
 
-    cleanupSubmissionObjects();
-    if (!cancelled && validateResult && !validate()) return -1;
+    if (progress) progress(1.0f);
+    if (validateResult && !validate()) return -1;
 
     return std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count();
 }
@@ -466,6 +415,7 @@ void GemmExecutor::release() {
     // VulkanBuffer releases the matrix buffers later through RAII.
     context_.waitIdle();
     const VkDevice device = context_.device();
+    if (fence_ != VK_NULL_HANDLE) vkDestroyFence(device, fence_, nullptr);
     if (commandPool_ != VK_NULL_HANDLE) vkDestroyCommandPool(device, commandPool_, nullptr);
     if (descriptorPool_ != VK_NULL_HANDLE)
         vkDestroyDescriptorPool(device, descriptorPool_, nullptr);
@@ -477,6 +427,8 @@ void GemmExecutor::release() {
     if (shaderModule_ != VK_NULL_HANDLE)
         vkDestroyShaderModule(device, shaderModule_, nullptr);
 
+    fence_ = VK_NULL_HANDLE;
+    commandBuffer_ = VK_NULL_HANDLE;
     commandPool_ = VK_NULL_HANDLE;
     descriptorPool_ = VK_NULL_HANDLE;
     descriptorSet_ = VK_NULL_HANDLE;

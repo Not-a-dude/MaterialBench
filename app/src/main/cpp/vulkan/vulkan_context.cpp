@@ -101,7 +101,6 @@ bool VulkanContext::initialize() {
     for (VkPhysicalDevice candidate : devices) {
         VkPhysicalDeviceProperties candidateProperties{};
         vkGetPhysicalDeviceProperties(candidate, &candidateProperties);
-        if (candidateProperties.limits.maxPushConstantsSize < sizeof(uint32_t) * 5) continue;
 
         uint32_t familyCount = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(candidate, &familyCount, nullptr);
@@ -147,23 +146,37 @@ bool VulkanContext::initialize() {
         return false;
     }
 
-    LOGI("Using Vulkan compute device: %s", properties_.deviceName);
+    LOGI("Using Vulkan compute device: %s (type=%d)", properties_.deviceName,
+         static_cast<int>(properties_.deviceType));
+    LOGI("Compute limits: groups=(%u,%u,%u), local=(%u,%u,%u), "
+         "invocations=%u, shared=%u bytes",
+         properties_.limits.maxComputeWorkGroupCount[0],
+         properties_.limits.maxComputeWorkGroupCount[1],
+         properties_.limits.maxComputeWorkGroupCount[2],
+         properties_.limits.maxComputeWorkGroupSize[0],
+         properties_.limits.maxComputeWorkGroupSize[1],
+         properties_.limits.maxComputeWorkGroupSize[2],
+         properties_.limits.maxComputeWorkGroupInvocations,
+         properties_.limits.maxComputeSharedMemorySize);
     return true;
 }
 
 uint32_t VulkanContext::findMemoryType(uint32_t typeMask,
-                                       VkMemoryPropertyFlags required) const {
-    // typeMask identifies memory types compatible with the buffer. Select the
-    // first compatible type containing all required memory property flags.
+                                       VkMemoryPropertyFlags required,
+                                       VkMemoryPropertyFlags preferred) const {
     VkPhysicalDeviceMemoryProperties memoryProperties{};
     vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &memoryProperties);
+
+    uint32_t fallback = UINT32_MAX;
     for (uint32_t index = 0; index < memoryProperties.memoryTypeCount; ++index) {
-        if ((typeMask & (1u << index)) != 0 &&
-            (memoryProperties.memoryTypes[index].propertyFlags & required) == required) {
-            return index;
-        }
+        if ((typeMask & (1u << index)) == 0) continue;
+        const VkMemoryPropertyFlags flags =
+            memoryProperties.memoryTypes[index].propertyFlags;
+        if ((flags & required) != required) continue;
+        if ((flags & preferred) == preferred) return index;
+        if (fallback == UINT32_MAX) fallback = index;
     }
-    return UINT32_MAX;
+    return fallback;
 }
 
 bool VulkanContext::createHostStorageBuffer(VkDeviceSize size, VulkanBuffer& output) const {
@@ -191,9 +204,12 @@ bool VulkanContext::createHostStorageBuffer(VkDeviceSize size, VulkanBuffer& out
     // to the buffer explicitly with vkBindBufferMemory.
     VkMemoryRequirements requirements{};
     vkGetBufferMemoryRequirements(device_, buffer, &requirements);
+    // Direct mapping keeps initialization and validation simple. Among coherent
+    // host-visible types, prefer memory that the driver also marks device-local.
+    const VkMemoryPropertyFlags requiredFlags =
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     const uint32_t memoryType = findMemoryType(
-        requirements.memoryTypeBits,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        requirements.memoryTypeBits, requiredFlags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     if (memoryType == UINT32_MAX) {
         LOGE("No host-visible coherent memory type for storage buffer");
         vkDestroyBuffer(device_, buffer, nullptr);
@@ -217,6 +233,13 @@ bool VulkanContext::createHostStorageBuffer(VkDeviceSize size, VulkanBuffer& out
         vkDestroyBuffer(device_, buffer, nullptr);
         return false;
     }
+
+    VkPhysicalDeviceMemoryProperties memoryProperties{};
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &memoryProperties);
+    const VkMemoryPropertyFlags selectedFlags =
+        memoryProperties.memoryTypes[memoryType].propertyFlags;
+    LOGI("Allocated %llu-byte Vulkan storage buffer with memory flags 0x%x",
+         static_cast<unsigned long long>(size), selectedFlags);
 
     output.device_ = device_;
     output.buffer_ = buffer;

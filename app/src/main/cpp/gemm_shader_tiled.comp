@@ -1,7 +1,17 @@
 #version 450
 
-#define TILE_DIM 16
-layout(local_size_x = TILE_DIM, local_size_y = TILE_DIM, local_size_z = 1) in;
+// 64 invocations cooperatively compute one 32x32 output tile. Each invocation
+// owns a 4x4 register tile, providing sixteen independent FP32 FMA chains.
+#define LOCAL_SIZE_X 8
+#define LOCAL_SIZE_Y 8
+#define OUTPUTS_PER_THREAD_X 4
+#define OUTPUTS_PER_THREAD_Y 4
+#define OUTPUT_TILE_X (LOCAL_SIZE_X * OUTPUTS_PER_THREAD_X)
+#define OUTPUT_TILE_Y (LOCAL_SIZE_Y * OUTPUTS_PER_THREAD_Y)
+#define K_TILE 8
+
+layout(local_size_x = LOCAL_SIZE_X, local_size_y = LOCAL_SIZE_Y,
+       local_size_z = 1) in;
 
 layout(binding = 0) readonly buffer MatrixA {
     float elements[];
@@ -23,41 +33,101 @@ layout(push_constant) uniform PushConstants {
     uint baseWorkgroupY;
 } pc;
 
-shared float tileA[TILE_DIM][TILE_DIM];
-shared float tileB[TILE_DIM][TILE_DIM];
+// Padding avoids common shared-memory bank-stride conflicts.
+shared float tileA[OUTPUT_TILE_Y][K_TILE + 1];
+shared float tileB[K_TILE][OUTPUT_TILE_X + 1];
 
 void main() {
-    const uint globalRow =
-        pc.baseWorkgroupY * TILE_DIM + gl_GlobalInvocationID.y;
-    const uint globalColumn =
-        pc.baseWorkgroupX * TILE_DIM + gl_GlobalInvocationID.x;
-    const uint localRow = gl_LocalInvocationID.y;
-    const uint localColumn = gl_LocalInvocationID.x;
+    const uint localX = gl_LocalInvocationID.x;
+    const uint localY = gl_LocalInvocationID.y;
+    const uint localIndex = localY * LOCAL_SIZE_X + localX;
 
-    float sum = 0.0;
-    const uint tileCount = (pc.K + TILE_DIM - 1) / TILE_DIM;
+    const uint workgroupX = pc.baseWorkgroupX + gl_WorkGroupID.x;
+    const uint workgroupY = pc.baseWorkgroupY + gl_WorkGroupID.y;
+    const uint outputBaseColumn = workgroupX * OUTPUT_TILE_X;
+    const uint outputBaseRow = workgroupY * OUTPUT_TILE_Y;
+    const uint threadBaseColumn = outputBaseColumn + localX * OUTPUTS_PER_THREAD_X;
+    const uint threadBaseRow = outputBaseRow + localY * OUTPUTS_PER_THREAD_Y;
 
-    for (uint tile = 0; tile < tileCount; ++tile) {
-        const uint aColumn = tile * TILE_DIM + localColumn;
-        const uint bRow = tile * TILE_DIM + localRow;
+    float accumulators[OUTPUTS_PER_THREAD_Y][OUTPUTS_PER_THREAD_X];
+#pragma unroll
+    for (uint row = 0; row < OUTPUTS_PER_THREAD_Y; ++row) {
+#pragma unroll
+        for (uint column = 0; column < OUTPUTS_PER_THREAD_X; ++column) {
+            accumulators[row][column] = 0.0;
+        }
+    }
 
-        tileA[localRow][localColumn] =
-            (globalRow < pc.N && aColumn < pc.K)
-                ? matrixA.elements[globalRow * pc.K + aColumn]
-                : 0.0;
-        tileB[localRow][localColumn] =
-            (bRow < pc.K && globalColumn < pc.M)
-                ? matrixB.elements[bRow * pc.M + globalColumn]
-                : 0.0;
+    const uint kTileCount = (pc.K + K_TILE - 1) / K_TILE;
+    for (uint tile = 0; tile < kTileCount; ++tile) {
+        const uint kBase = tile * K_TILE;
+
+        // There are 512 values in the two shared tiles. The 64 invocations load
+        // eight values each with contiguous global-memory access patterns.
+#pragma unroll
+        for (uint loadIndex = localIndex;
+             loadIndex < OUTPUT_TILE_Y * K_TILE + K_TILE * OUTPUT_TILE_X;
+             loadIndex += LOCAL_SIZE_X * LOCAL_SIZE_Y) {
+            if (loadIndex < OUTPUT_TILE_Y * K_TILE) {
+                const uint row = loadIndex / K_TILE;
+                const uint k = loadIndex % K_TILE;
+                const uint globalRow = outputBaseRow + row;
+                const uint globalK = kBase + k;
+                tileA[row][k] = (globalRow < pc.N && globalK < pc.K)
+                    ? matrixA.elements[globalRow * pc.K + globalK]
+                    : 0.0;
+            } else {
+                const uint bIndex = loadIndex - OUTPUT_TILE_Y * K_TILE;
+                const uint k = bIndex / OUTPUT_TILE_X;
+                const uint column = bIndex % OUTPUT_TILE_X;
+                const uint globalK = kBase + k;
+                const uint globalColumn = outputBaseColumn + column;
+                tileB[k][column] = (globalK < pc.K && globalColumn < pc.M)
+                    ? matrixB.elements[globalK * pc.M + globalColumn]
+                    : 0.0;
+            }
+        }
 
         barrier();
-        for (uint k = 0; k < TILE_DIM; ++k) {
-            sum += tileA[localRow][k] * tileB[k][localColumn];
+
+#pragma unroll
+        for (uint k = 0; k < K_TILE; ++k) {
+            float aFragment[OUTPUTS_PER_THREAD_Y];
+            float bFragment[OUTPUTS_PER_THREAD_X];
+#pragma unroll
+            for (uint row = 0; row < OUTPUTS_PER_THREAD_Y; ++row) {
+                aFragment[row] = tileA[localY * OUTPUTS_PER_THREAD_Y + row][k];
+            }
+#pragma unroll
+            for (uint column = 0; column < OUTPUTS_PER_THREAD_X; ++column) {
+                bFragment[column] = tileB[k][localX * OUTPUTS_PER_THREAD_X + column];
+            }
+#pragma unroll
+            for (uint row = 0; row < OUTPUTS_PER_THREAD_Y; ++row) {
+#pragma unroll
+                for (uint column = 0; column < OUTPUTS_PER_THREAD_X; ++column) {
+                    accumulators[row][column] =
+                        fma(aFragment[row], bFragment[column], accumulators[row][column]);
+                }
+            }
         }
+
+        // No invocation may overwrite a shared tile while another invocation is
+        // still consuming it.
         barrier();
     }
 
-    if (globalRow < pc.N && globalColumn < pc.M) {
-        matrixC.elements[globalRow * pc.M + globalColumn] = sum;
+#pragma unroll
+    for (uint row = 0; row < OUTPUTS_PER_THREAD_Y; ++row) {
+        const uint globalRow = threadBaseRow + row;
+        if (globalRow >= pc.N) continue;
+#pragma unroll
+        for (uint column = 0; column < OUTPUTS_PER_THREAD_X; ++column) {
+            const uint globalColumn = threadBaseColumn + column;
+            if (globalColumn < pc.M) {
+                matrixC.elements[globalRow * pc.M + globalColumn] =
+                    accumulators[row][column];
+            }
+        }
     }
 }

@@ -10,19 +10,15 @@ namespace materialbench::vulkan {
 
 // Parameters for GEMM C = A * B:
 // A: rows x depth, B: depth x columns, C: rows x columns.
-// chunkWorkgroups* splits the task into dispatch chunks for progress reporting
-// and cancellation.
 struct GemmConfig {
     uint32_t rows = 0;
     uint32_t columns = 0;
     uint32_t depth = 0;
-    uint32_t chunkWorkgroupsX = 32;
-    uint32_t chunkWorkgroupsY = 32;
     uint32_t randomSeed = 0x4d42564b;
 };
 
 // Prepares and executes one matrix multiplication configuration.
-// Owns the pipeline, descriptors, command pool, and matrix buffers.
+// Owns the pipeline, descriptors, persistent submission objects, and buffers.
 // The supplied VulkanContext must outlive this executor.
 class GemmExecutor final {
 public:
@@ -36,9 +32,8 @@ public:
     GemmExecutor(const GemmExecutor&) = delete;
     GemmExecutor& operator=(const GemmExecutor&) = delete;
 
-    // Submits compute chunks to the compute queue sequentially.
-    // progress receives a value in [0, 1] after each dispatch, and shouldStop is
-    // checked between dispatches. Returns elapsed milliseconds or -1 on failure.
+    // Executes one complete GEMM in one queue submission. The command buffer and
+    // fence are reused across calls. Returns elapsed milliseconds or -1 on error.
     int64_t run(const ProgressCallback& progress,
                 const StopPredicate& shouldStop,
                 bool validateResult);
@@ -46,13 +41,11 @@ public:
 private:
     GemmExecutor(VulkanContext& context, GemmConfig config);
 
-    // Initialization is split by resource type; release() is safe even after
-    // only part of the initialization sequence has completed.
     bool initialize();
     bool createPipeline();
     bool createBuffers();
     bool createDescriptors();
-    bool createCommandPool();
+    bool createSubmissionObjects();
     bool validate() const;
     void release();
 
@@ -68,6 +61,8 @@ private:
     VkDescriptorPool descriptorPool_ = VK_NULL_HANDLE;
     VkDescriptorSet descriptorSet_ = VK_NULL_HANDLE;
     VkCommandPool commandPool_ = VK_NULL_HANDLE;
+    VkCommandBuffer commandBuffer_ = VK_NULL_HANDLE;
+    VkFence fence_ = VK_NULL_HANDLE;
 
     VulkanBuffer bufferA_;
     VulkanBuffer bufferB_;

@@ -8,25 +8,19 @@
 namespace materialbench::vulkan {
 namespace {
 
-// The large configuration provides a sustained, measurable GPU workload.
-// Chunks enable progress reporting and avoid one excessively long dispatch.
+// Both modes use the same large, register-tiled FP32 GEMM. One multiplication
+// performs roughly 137 GFLOP while using about 192 MiB across A, B, and C.
 constexpr GemmConfig kBenchmarkConfig{
-    8192,  // rows
-    8192,  // columns
-    5120,  // depth
-    32,    // chunkWorkgroupsX
-    32,    // chunkWorkgroupsY
+    4096,  // rows
+    4096,  // columns
+    4096,  // depth
     0x4d42564b,
 };
 
-// The stress configuration is smaller so short iterations check stopRequested_
-// more frequently.
 constexpr GemmConfig kStressConfig{
-    512,   // rows
-    512,   // columns
-    384,   // depth
-    16,    // chunkWorkgroupsX
-    16,    // chunkWorkgroupsY
+    512,  // rows
+    512,  // columns
+    512,  // depth
     0x53545253,
 };
 

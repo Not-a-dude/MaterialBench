@@ -67,7 +67,9 @@ private:
     VulkanContext() = default;
 
     bool initialize();
-    uint32_t findMemoryType(uint32_t typeMask, VkMemoryPropertyFlags required) const;
+    uint32_t findMemoryType(uint32_t typeMask,
+                            VkMemoryPropertyFlags required,
+                            VkMemoryPropertyFlags preferred) const;
 
     VkInstance instance_ = VK_NULL_HANDLE;
     VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
