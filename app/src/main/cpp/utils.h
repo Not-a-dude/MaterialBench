@@ -11,9 +11,6 @@ void pin_to_core(int core_id);
 void update_progress(JNIEnv* env, jobject callback, jmethodID methodId, float progress);
 std::string get_files_dir_path(JNIEnv* env, jobject context);
 
-#ifndef LOG_UTILS_H
-#define LOG_UTILS_H
-
 #include <android/log.h>
 
 #define LOG_TAG "MaterialBench_NDK"
@@ -24,5 +21,3 @@ std::string get_files_dir_path(JNIEnv* env, jobject context);
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGF(...) __android_log_print(ANDROID_LOG_FATAL, LOG_TAG, __VA_ARGS__)
-
-#endif
