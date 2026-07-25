@@ -11,6 +11,12 @@
 
 namespace materialbench::vulkan {
 
+struct StressPerformanceSnapshot {
+    uint64_t completedFlops = 0;
+    uint64_t elapsedNanoseconds = 0;
+    bool hasMeasurement = false;
+};
+
 // Thread-safe facade over the Vulkan compute subsystem. Lazily creates one
 // VulkanContext and prevents concurrent benchmark/stress access to the queue.
 class ComputeService final {
@@ -29,11 +35,18 @@ public:
     void stopStress();
     void cleanup();
 
+    StressPerformanceSnapshot getStressPerformance() const;
+
 private:
     ComputeService() = default;
 
     VulkanContext* ensureContext();
     void stressMain();
+
+    mutable std::mutex stressMetricsMutex_;
+    uint64_t stressCompletedFlops_ = 0;
+    uint64_t stressElapsedNanoseconds_ = 0;
+    bool stressHasMeasurement_ = false;
 
     // Serializes queue operations and destruction of context_. Vulkan requires
     // external synchronization for concurrent access to the same queue.

@@ -17,6 +17,10 @@ struct GemmConfig {
     uint32_t randomSeed = 0x4d42564b;
 };
 
+struct GemmRunMetrics {
+    uint64_t elapsedNanoseconds = 0;
+};
+
 // Prepares and executes one matrix multiplication configuration.
 // Owns the pipeline, descriptors, persistent submission objects, and buffers.
 // The supplied VulkanContext must outlive this executor.
@@ -36,7 +40,8 @@ public:
     // fence are reused across calls. Returns elapsed milliseconds or -1 on error.
     int64_t run(const ProgressCallback& progress,
                 const StopPredicate& shouldStop,
-                bool validateResult);
+                bool validateResult,
+                GemmRunMetrics* metrics = nullptr);
 
 private:
     GemmExecutor(VulkanContext& context, GemmConfig config);

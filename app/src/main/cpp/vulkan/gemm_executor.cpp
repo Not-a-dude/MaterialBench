@@ -287,13 +287,19 @@ bool GemmExecutor::createSubmissionObjects() {
     }
 
     VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-    return vkSucceeded(vkCreateFence(context_.device(), &fenceInfo, nullptr, &fence_),
-                       "vkCreateFence");
+    if (!vkSucceeded(vkCreateFence(context_.device(), &fenceInfo, nullptr, &fence_),
+                     "vkCreateFence")) {
+        return false;
+    }
+
+    return true;
 }
 
 int64_t GemmExecutor::run(const ProgressCallback& progress,
                           const StopPredicate& shouldStop,
-                          bool validateResult) {
+                          bool validateResult,
+                          GemmRunMetrics* metrics) {
+    if (metrics != nullptr) *metrics = {};
     if (shouldStop && shouldStop()) return 0;
 
     if (!vkSucceeded(vkResetCommandBuffer(commandBuffer_, 0),
@@ -339,6 +345,13 @@ int64_t GemmExecutor::run(const ProgressCallback& progress,
         return -1;
     }
     const auto finish = std::chrono::steady_clock::now();
+
+    const uint64_t elapsedNanoseconds = static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(finish - start).count());
+
+    if (metrics != nullptr) {
+        metrics->elapsedNanoseconds = elapsedNanoseconds;
+    }
 
     if (progress) progress(1.0f);
     if (validateResult && !validate()) return -1;

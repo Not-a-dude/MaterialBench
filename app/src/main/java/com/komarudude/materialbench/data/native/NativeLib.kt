@@ -7,6 +7,11 @@ interface BenchmarkProgressCallback {
     fun onProgressUpdate(progress: Float)
 }
 
+interface StressDataCallback {
+    @Keep
+    fun onStressData(timestamp: Long, cpuPerf: Int?, gpuMflops: Int?)
+}
+
 object NativeLib {
     init {
         try {
@@ -28,9 +33,9 @@ object NativeLib {
     external fun nativeRunCpuCompressBenchmark(assetManager: android.content.res.AssetManager, callback: BenchmarkProgressCallback): Long
     external fun nativeRunVulkanGEMMBenchmark(callback: BenchmarkProgressCallback): Long
     external fun hasVulkanRt(): Boolean
-    external fun nativeStartCpuStress()
+    external fun nativeStartCpuStress(callback: StressDataCallback)
     external fun nativeStopCpuStress()
-    external fun nativeStartGpuStress()
+    external fun nativeStartGpuStress(callback: StressDataCallback)
     external fun nativeStopGpuStress()
     external fun nativeCleanup()
     external fun nativeBenchCleanup()

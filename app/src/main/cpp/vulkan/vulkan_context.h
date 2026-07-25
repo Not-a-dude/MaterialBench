@@ -53,6 +53,7 @@ public:
     VkPhysicalDevice physicalDevice() const { return physicalDevice_; }
     VkQueue computeQueue() const { return computeQueue_; }
     uint32_t computeQueueFamilyIndex() const { return computeQueueFamilyIndex_; }
+    float timestampPeriodNanoseconds() const { return properties_.limits.timestampPeriod; }
     const VkPhysicalDeviceProperties& properties() const { return properties_; }
 
     // Creates a storage buffer backed by HOST_VISIBLE | HOST_COHERENT memory.

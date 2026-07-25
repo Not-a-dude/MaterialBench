@@ -24,6 +24,10 @@ constexpr GemmConfig kStressConfig{
     0x53545253,
 };
 
+constexpr uint64_t kStressFlopsPerIteration =
+    2ULL * kStressConfig.rows * kStressConfig.columns * kStressConfig.depth;
+constexpr uint32_t kStressWarmupIterations = 3;
+
 }  // namespace
 
 ComputeService& ComputeService::instance() {
@@ -40,6 +44,15 @@ VulkanContext* ComputeService::ensureContext() {
     // prevent duplicate initialization or cleanup while the context is in use.
     if (!context_) context_ = VulkanContext::create();
     return context_.get();
+}
+
+StressPerformanceSnapshot ComputeService::getStressPerformance() const {
+    std::lock_guard<std::mutex> lock(stressMetricsMutex_);
+    return {
+        stressCompletedFlops_,
+        stressElapsedNanoseconds_,
+        stressHasMeasurement_,
+    };
 }
 
 int64_t ComputeService::runBenchmark(const GemmExecutor::ProgressCallback& progress) {
@@ -79,6 +92,12 @@ void ComputeService::startStress() {
     std::lock_guard<std::mutex> lock(stressMutex_);
     if (stressRunning_.load(std::memory_order_acquire)) return;
 
+    {
+        std::lock_guard<std::mutex> metricsLock(stressMetricsMutex_);
+        stressCompletedFlops_ = 0;
+        stressElapsedNanoseconds_ = 0;
+        stressHasMeasurement_ = false;
+    }
     stopRequested_.store(false, std::memory_order_release);
     stressRunning_.store(true, std::memory_order_release);
     try {
@@ -122,10 +141,30 @@ void ComputeService::stressMain() {
                     const auto shouldStop = [this] {
                         return stopRequested_.load(std::memory_order_acquire);
                     };
-                    // Create the pipeline, descriptors, and buffers once and reuse
-                    // them; each iteration only repeats command dispatch.
-                    while (!shouldStop()) {
-                        if (executor->run({}, shouldStop, false) < 0) break;
+                    // Warm up pipeline execution and the initial GPU clock state.
+                    bool executionHealthy = true;
+                    for (uint32_t iteration = 0;
+                         iteration < kStressWarmupIterations && !shouldStop(); ++iteration) {
+                        GemmRunMetrics ignoredMetrics;
+                        if (executor->run({}, shouldStop, false, &ignoredMetrics) < 0) {
+                            executionHealthy = false;
+                            break;
+                        }
+                    }
+
+                    // Every published sample is based on standard GEMM FLOP count
+                    // divided by measured GPU time, not on whole iterations per second.
+                    while (executionHealthy && !shouldStop()) {
+                        GemmRunMetrics metrics;
+                        if (executor->run({}, shouldStop, false, &metrics) < 0) break;
+                        if (metrics.elapsedNanoseconds == 0) continue;
+
+                        std::lock_guard<std::mutex> metricsLock(stressMetricsMutex_);
+                        if (!stressHasMeasurement_) {
+                            stressHasMeasurement_ = true;
+                        }
+                        stressCompletedFlops_ += kStressFlopsPerIteration;
+                        stressElapsedNanoseconds_ += metrics.elapsedNanoseconds;
                     }
                 }
             }

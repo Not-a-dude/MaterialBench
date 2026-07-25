@@ -43,7 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.komarudude.materialbench.R
-import com.komarudude.materialbench.ui.screens.stress.components.TemperatureChart
+import com.komarudude.materialbench.ui.screens.stress.components.StressChart
 import com.patrykandpatrick.vico.core.cartesian.CartesianMeasuringContext
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 
@@ -135,7 +135,7 @@ fun StressScreen(modifier: Modifier = Modifier, viewModel: StressViewModel = vie
 
             Spacer(Modifier.height(32.dp))
 
-            TemperatureChart(modelProducer = viewModel.modelProducer, bottomAxisValueFormatter = bottomAxisValueFormatter)
+            StressChart(modelProducer = viewModel.modelProducer, bottomAxisValueFormatter = bottomAxisValueFormatter)
 
             Spacer(Modifier.height(32.dp))
 
